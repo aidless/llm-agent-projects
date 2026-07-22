@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  eval-platform:
+    build: .
+    container_name: llm-eval-benchmark
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  eval-worker:
+    build: .
+    container_name: llm-eval-worker
+    command: ["pytest", "tests/", "-v"]
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    profiles:
+      - test

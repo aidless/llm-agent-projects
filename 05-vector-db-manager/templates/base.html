@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}向量数据库管理平台{% endblock %}</title>
+    <style>
+        /* ===== 全局样式 ===== */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft YaHei", sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        /* 导航栏 */
+        .navbar {
+            background: #1a1a2e;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .navbar .brand {
+            color: #e0e0ff;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 14px 20px;
+            text-decoration: none;
+            margin-right: 20px;
+        }
+        .navbar a {
+            color: #b0b0d0;
+            text-decoration: none;
+            padding: 14px 16px;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+        .navbar a:hover, .navbar a.active {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        /* 主内容区 */
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .card h2 {
+            color: #1a1a2e;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #eef;
+        }
+        .card h3 {
+            color: #333;
+            margin: 16px 0 8px;
+        }
+        /* 表单 */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #555;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #4a6cf7;
+            box-shadow: 0 0 0 3px rgba(74,108,247,0.15);
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        /* 按钮 */
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background: #4a6cf7;
+            color: #fff;
+        }
+        .btn-primary:hover { background: #3a5ce5; }
+        .btn-danger {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-success {
+            background: #27ae60;
+            color: #fff;
+        }
+        .btn-success:hover { background: #219a52; }
+        .btn-warning {
+            background: #f39c12;
+            color: #fff;
+        }
+        .btn-secondary {
+            background: #95a5a6;
+            color: #fff;
+        }
+        /* 表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            color: #555;
+            font-weight: 600;
+        }
+        tr:hover { background: #f8f9ff; }
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #4a6cf7, #6366f1);
+            color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-card .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .stat-card .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .stat-card.green { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .stat-card.orange { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .stat-card.red { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        /* 提示消息 */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        /* 结果区域 */
+        .result-area {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 16px;
+            margin-top: 12px;
+            min-height: 100px;
+            max-height: 600px;
+            overflow-y: auto;
+            font-family: "Courier New", monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        /* 搜索结果卡片 */
+        .search-result {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .search-result .similarity {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .similarity-high { background: #d4edda; color: #155724; }
+        .similarity-medium { background: #fff3cd; color: #856404; }
+        .similarity-low { background: #f8d7da; color: #721c24; }
+        .search-result .content { margin-top: 8px; line-height: 1.7; }
+        .search-result .metadata { margin-top: 8px; font-size: 12px; color: #888; }
+        /* 加载动画 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        .loading::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+        /* 行内表单 */
+        .inline-form {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .inline-form .form-group {
+            flex: 1;
+            min-width: 150px;
+        }
+        /* 标签 */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-blue { background: #e8eaff; color: #4a6cf7; }
+        .badge-green { background: #d4edda; color: #155724; }
+        .badge-orange { background: #fff3cd; color: #856404; }
+        /* 多列布局 */
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        /* JSON 预览 */
+        .json-preview {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: "Courier New", monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <a class="brand" href="/">VectorDB Manager</a>
+        <a href="/" class="{% if active_page == 'home' %}active{% endif %}">统计面板</a>
+        <a href="/models" class="{% if active_page == 'models' %}active{% endif %}">模型管理</a>
+        <a href="/collections" class="{% if active_page == 'collections' %}active{% endif %}">集合管理</a>
+        <a href="/import" class="{% if active_page == 'import' %}active{% endif %}">文档导入</a>
+        <a href="/search" class="{% if active_page == 'search' %}active{% endif %}">相似度搜索</a>
+        <a href="/compare" class="{% if active_page == 'compare' %}active{% endif %}">索引对比</a>
+        <a href="/chunk" class="{% if active_page == 'chunk' %}active{% endif %}">分块测试</a>
+    </nav>
+
+    <!-- 主内容 -->
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- 通用 JavaScript -->
+    <script>
+        // API 请求封装
+        async function apiGet(url) {
+            const resp = await fetch(url);
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({detail: resp.statusText}));
+                throw new Error(err.detail || '请求失败');
+            }
+            return resp.json();
+        }
+        async function apiPost(url, data) {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({detail: resp.statusText}));
+                throw new Error(err.detail || '请求失败');
+            }
+            return resp.json();
+        }
+        // 显示提示
+        function showAlert(containerId, message, type) {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+            el.className = 'alert alert-' + type;
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 5000);
+        }
+        // 显示加载
+        function showLoading(containerId) {
+            const el = document.getElementById(containerId);
+            if (el) { el.innerHTML = '<div class="loading">处理中</div>'; }
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

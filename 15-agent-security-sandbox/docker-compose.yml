@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  sandbox:
+    build: .
+    container_name: agent-security-sandbox
+    ports:
+      - "8000:8000"
+    environment:
+      - SANDBOX_LOG_LEVEL=INFO
+      - SANDBOX_MAX_CONCURRENT=10
+    volumes:
+      - sandbox_logs:/app/logs
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  sandbox_logs:

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}相似度搜索 - 向量数据库管理平台{% endblock %}
+{% set active_page = 'search' %}
+
+{% block content %}
+<h1 style="margin: 20px 0;">相似度搜索</h1>
+
+<div class="alert" id="search-alert"></div>
+
+<div class="card">
+    <h2>搜索配置</h2>
+    <div class="inline-form">
+        <div class="form-group" style="flex:2;">
+            <label>查询文本</label>
+            <input type="text" id="search-query" placeholder="输入查询内容...">
+        </div>
+        <div class="form-group">
+            <label>集合</label>
+            <input type="text" id="search-collection" placeholder="集合名称">
+        </div>
+        <div class="form-group">
+            <label>Top-K</label>
+            <input type="number" id="search-topk" value="5" min="1" max="50">
+        </div>
+        <div class="form-group">
+            <label>相似度阈值</label>
+            <input type="number" id="search-threshold" value="0" min="0" max="1" step="0.1">
+        </div>
+        <div class="form-group">
+            <label>元数据过滤 (JSON)</label>
+            <input type="text" id="search-filter" placeholder='{"source": "sample.txt"}'>
+        </div>
+        <button class="btn btn-primary" onclick="doSearch()">搜索</button>
+    </div>
+</div>
+
+<!-- 搜索结果 -->
+<div class="card">
+    <h2>搜索结果 <span id="search-count" style="color:#888;font-size:14px;font-weight:normal;"></span></h2>
+    <div id="search-results">
+        <p style="color:#888;">输入查询内容后点击搜索</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getSimilarityClass(sim) {
+    if (sim >= 0.7) return 'similarity-high';
+    if (sim >= 0.4) return 'similarity-medium';
+    return 'similarity-low';
+}
+
+function formatMetadata(meta) {
+    if (!meta) return '';
+    const entries = Object.entries(meta).filter(([k,v]) => k !== 'chunk_index');
+    if (!entries.length) return '';
+    return entries.map(([k,v]) => `${k}: ${v}`).join(' | ');
+}
+
+async function doSearch() {
+    const query = document.getElementById('search-query').value.trim();
+    const collection = document.getElementById('search-collection').value.trim();
+    if (!query || !collection) { showAlert('search-alert', '请输入查询文本和集合名称', 'error'); return; }
+
+    const topK = parseInt(document.getElementById('search-topk').value);
+    const threshold = parseFloat(document.getElementById('search-threshold').value);
+    const filterStr = document.getElementById('search-filter').value.trim();
+    let metadataFilter = null;
+    if (filterStr) {
+        try { metadataFilter = JSON.parse(filterStr); }
+        catch (e) { showAlert('search-alert', '元数据过滤 JSON 格式错误', 'error'); return; }
+    }
+
+    showLoading('search-results');
+    try {
+        const data = await apiPost('/api/search', {
+            collection_name: collection,
+            query: query,
+            top_k: topK,
+            threshold: threshold,
+            metadata_filter: metadataFilter,
+        });
+
+        document.getElementById('search-count').textContent = `共 ${data.total_results} 条结果`;
+        let html = '';
+        if (data.results && data.results.length > 0) {
+            data.results.forEach((r, i) => {
+                const simClass = getSimilarityClass(r.similarity);
+                html += `<div class="search-result">
+                    <strong>#${i+1}</strong>
+                    <span class="similarity ${simClass}">相似度: ${(r.similarity * 100).toFixed(1)}%</span>
+                    <span class="similarity" style="background:#eee;color:#555;">距离: ${r.distance}</span>
+                    <div class="content">${escapeHtml(r.content)}</div>
+                    <div class="metadata">${formatMetadata(r.metadata)}</div>
+                </div>`;
+            });
+        } else {
+            html = '<p style="color:#888;">未找到满足条件的结果，请尝试降低相似度阈值。</p>';
+        }
+        document.getElementById('search-results').innerHTML = html;
+    } catch (e) {
+        document.getElementById('search-results').innerHTML = '<p style="color:#e74c3c;">' + e.message + '</p>';
+        showAlert('search-alert', '搜索失败: ' + e.message, 'error');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 回车搜索
+document.getElementById('search-query').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doSearch();
+});
+</script>
+{% endblock %}

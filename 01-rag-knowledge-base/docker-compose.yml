@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  # RAG 知识库服务
+  rag-kb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-knowledge-base
+    ports:
+      - "8000:8000"
+    volumes:
+      # 持久化数据
+      - ./data/chroma_db:/app/data/chroma_db
+      - ./data/uploads:/app/data/uploads
+      - ./data/processed:/app/data/processed
+      # 模型缓存（避免每次重新下载）
+      - model_cache:/app/models
+    environment:
+      # 应用配置
+      - APP_NAME=RAG-Knowledge-Base
+      - APP_PORT=8000
+      - LOG_LEVEL=INFO
+      # Embedding 配置
+      - EMBEDDING_PROVIDER=local
+      - LOCAL_EMBEDDING_MODEL=all-MiniLM-L6-v2
+      # LLM 配置（请填入实际 API Key）
+      - LLM_PROVIDER=openai
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-your-key}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-https://api.openai.com/v1}
+      - LLM_MODEL=gpt-3.5-turbo
+      # Reranker（默认关闭以节省内存）
+      - RERANKER_ENABLED=false
+      # 分块配置
+      - CHUNK_STRATEGY=semantic
+      - CHUNK_SIZE=512
+      - CHUNK_OVERLAP=64
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+volumes:
+  model_cache:
+    driver: local

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}API 文档 - 向量数据库管理平台{% endblock %}
+{% set active_page = 'docs' %}
+
+{% block content %}
+<h1 style="margin: 20px 0;">API 接口文档</h1>
+
+<div class="card">
+    <h2>模型管理</h2>
+    <table>
+        <thead><tr><th>方法</th><th>路径</th><th>说明</th></tr></thead>
+        <tbody>
+            <tr><td><span class="badge badge-green">GET</span></td><td>/api/models</td><td>列出所有已加载的 Embedding 模型</td></tr>
+            <tr><td><span class="badge badge-blue">POST</span></td><td>/api/models/load</td><td>加载或切换模型。Body: {model_name, provider_type, api_key?, api_base?}</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>集合管理</h2>
+    <table>
+        <thead><tr><th>方法</th><th>路径</th><th>说明</th></tr></thead>
+        <tbody>
+            <tr><td><span class="badge badge-green">GET</span></td><td>/api/collections</td><td>列出所有 Collection</td></tr>
+            <tr><td><span class="badge badge-blue">POST</span></td><td>/api/collections</td><td>创建 Collection。Body: {name, description}</td></tr>
+            <tr><td><span class="badge badge-green">GET</span></td><td>/api/collections/{name}</td><td>获取 Collection 详情</td></tr>
+            <tr><td><span class="badge badge-orange">DELETE</span></td><td>/api/collections/{name}</td><td>删除 Collection</td></tr>
+            <tr><td><span class="badge badge-blue">POST</span></td><td>/api/collections/{name}/clear</td><td>清空 Collection 文档</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>文档导入</h2>
+    <table>
+        <thead><tr><th>方法</th><th>路径</th><th>说明</th></tr></thead>
+        <tbody>
+            <tr><td><span class="badge badge-blue">POST</span></td><td>/api/import/files</td><td>批量导入文件。Body: {collection_name, file_paths[], chunk_size, chunk_overlap, chunk_strategy}</td></tr>
+            <tr><td><span class="badge badge-blue">POST</span></td><td>/api/import/directory</td><td>导入目录。Body: {collection_name, dir_path, chunk_size, chunk_overlap, chunk_strategy}</td></tr>
+            <tr><td><span class="badge badge-blue">POST</span></td><td>/api/import/upload</td><td>上传文件导入。FormData: {collection_name, chunk_strategy, chunk_size, files[]}</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>搜索与对比</h2>
+    <table>
+        <thead><tr><th>方法</th><th>路径</th><th>说明</th></tr></thead>
+        <tbody>
+            <tr><td><span class="badge badge-blue">POST</span></td><td>/api/search</td><td>相似度搜索。Body: {collection_name, query, top_k, threshold, metadata_filter?}</td></tr>
+            <tr><td><span class="badge badge-blue">POST</span></td><td>/api/compare</td><td>多索引对比搜索。Body: {collection_names[], query, top_k}</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>分块测试</h2>
+    <table>
+        <thead><tr><th>方法</th><th>路径</th><th>说明</th></tr></thead>
+        <tbody>
+            <tr><td><span class="badge badge-blue">POST</span></td><td>/api/chunk/test</td><td>测试分块效果。Body: {text, chunk_size, chunk_overlap, chunk_strategy}</td></tr>
+            <tr><td><span class="badge badge-green">GET</span></td><td>/api/chunk/strategies</td><td>列出所有分块策略</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>系统</h2>
+    <table>
+        <thead><tr><th>方法</th><th>路径</th><th>说明</th></tr></thead>
+        <tbody>
+            <tr><td><span class="badge badge-green">GET</span></td><td>/api/health</td><td>健康检查</td></tr>
+            <tr><td><span class="badge badge-green">GET</span></td><td>/api/statistics</td><td>系统统计信息</td></tr>
+            <tr><td><span class="badge badge-green">GET</span></td><td>/docs</td><td>FastAPI 自动生成的 Swagger 文档</td></tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}

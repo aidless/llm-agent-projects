@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}索引对比 - 向量数据库管理平台{% endblock %}
+{% set active_page = 'compare' %}
+
+{% block content %}
+<h1 style="margin: 20px 0;">多索引对比</h1>
+<p style="color:#666;margin-bottom:20px;">在同一查询下对比不同集合（不同分块策略/嵌入模型）的检索效果</p>
+
+<div class="alert" id="compare-alert"></div>
+
+<div class="card">
+    <h2>对比配置</h2>
+    <div class="form-group">
+        <label>查询文本</label>
+        <input type="text" id="compare-query" placeholder="输入查询内容...">
+    </div>
+    <div class="form-group">
+        <label>集合名称（逗号分隔多个集合）</label>
+        <input type="text" id="compare-collections" placeholder="collection_fixed, collection_sentence">
+    </div>
+    <div class="form-group">
+        <label>每个集合返回结果数</label>
+        <input type="number" id="compare-topk" value="5" min="1" max="20">
+    </div>
+    <button class="btn btn-primary" onclick="doCompare()">开始对比</button>
+</div>
+
+<div id="compare-results"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getSimilarityClass(sim) {
+    if (sim >= 0.7) return 'similarity-high';
+    if (sim >= 0.4) return 'similarity-medium';
+    return 'similarity-low';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function doCompare() {
+    const query = document.getElementById('compare-query').value.trim();
+    const colsStr = document.getElementById('compare-collections').value.trim();
+    if (!query || !colsStr) { showAlert('compare-alert', '请填写查询文本和集合名称', 'error'); return; }
+
+    const collections = colsStr.split(',').map(s => s.trim()).filter(s => s);
+    const topK = parseInt(document.getElementById('compare-topk').value);
+    document.getElementById('compare-results').innerHTML = '<div class="loading">对比搜索中</div>';
+
+    try {
+        const data = await apiPost('/api/compare', {
+            query: query,
+            collection_names: collections,
+            top_k: topK,
+        });
+
+        let html = `<h2 style="margin:20px 0 16px;">对比结果: "${data.query}"</h2>`;
+
+        if (data.comparisons && data.comparisons.length > 0) {
+            html += '<div class="two-col">';
+            data.comparisons.forEach(comp => {
+                html += '<div class="card">';
+                if (comp.error) {
+                    html += `<h2 style="color:#e74c3c;">${comp.collection_name}</h2>`;
+                    html += `<p style="color:#e74c3c;">错误: ${comp.error}</p>`;
+                } else {
+                    html += `<h2>${comp.collection_name}</h2>`;
+                    html += `<p style="margin-bottom:12px;">
+                        <span class="badge badge-blue">模型: ${comp.embedding_model}</span>
+                        <span class="badge badge-green">策略: ${comp.chunk_strategy}</span>
+                        <span class="badge badge-orange">大小: ${comp.chunk_size}</span>
+                    </p>`;
+                    if (comp.results && comp.results.length > 0) {
+                        html += `<p style="font-weight:bold;">共 ${comp.total_results} 条结果</p>`;
+                        comp.results.forEach((r, i) => {
+                            const simClass = getSimilarityClass(r.similarity);
+                            html += `<div class="search-result">
+                                <strong>#${i+1}</strong>
+                                <span class="similarity ${simClass}">${(r.similarity * 100).toFixed(1)}%</span>
+                                <div class="content">${escapeHtml(r.content.substring(0, 200))}${r.content.length > 200 ? '...' : ''}</div>
+                            </div>`;
+                        });
+                    } else {
+                        html += '<p style="color:#888;">无结果</p>';
+                    }
+                }
+                html += '</div>';
+            });
+            html += '</div>';
+        } else {
+            html = '<p style="color:#888;">无对比结果</p>';
+        }
+        document.getElementById('compare-results').innerHTML = html;
+    } catch (e) {
+        document.getElementById('compare-results').innerHTML = '<p style="color:#e74c3c;">' + e.message + '</p>';
+    }
+}
+</script>
+{% endblock %}

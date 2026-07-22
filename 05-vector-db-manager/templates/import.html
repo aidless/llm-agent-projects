@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}文档导入 - 向量数据库管理平台{% endblock %}
+{% set active_page = 'import' %}
+
+{% block content %}
+<h1 style="margin: 20px 0;">文档导入</h1>
+
+<div class="alert" id="import-alert"></div>
+
+<div class="two-col">
+    <!-- 导入文件路径 -->
+    <div class="card">
+        <h2>导入文件/目录</h2>
+        <div class="form-group">
+            <label>目标集合</label>
+            <input type="text" id="imp-collection" placeholder="集合名称">
+        </div>
+        <div class="form-group">
+            <label>文件路径（逗号分隔多个文件）</label>
+            <input type="text" id="imp-filepaths" placeholder="./data/sample.txt,./data/sample.json">
+        </div>
+        <div class="form-group">
+            <label>分块策略</label>
+            <select id="imp-strategy">
+                <option value="fixed">固定长度</option>
+                <option value="sentence">按句子</option>
+                <option value="paragraph">按段落</option>
+                <option value="sliding_window">滑动窗口</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>分块大小</label>
+            <input type="number" id="imp-chunk-size" value="500">
+        </div>
+        <div class="form-group">
+            <label>分块重叠</label>
+            <input type="number" id="imp-chunk-overlap" value="50">
+        </div>
+        <button class="btn btn-primary" onclick="importFiles()">导入文件</button>
+        <button class="btn btn-success" onclick="importDir()" style="margin-left:8px;">导入目录</button>
+    </div>
+
+    <!-- 上传文件 -->
+    <div class="card">
+        <h2>上传文件导入</h2>
+        <div class="form-group">
+            <label>目标集合</label>
+            <input type="text" id="upload-collection" placeholder="集合名称">
+        </div>
+        <div class="form-group">
+            <label>选择文件（支持 TXT/MD/JSON/CSV）</label>
+            <input type="file" id="upload-files" multiple accept=".txt,.md,.json,.csv">
+        </div>
+        <div class="form-group">
+            <label>分块策略</label>
+            <select id="upload-strategy">
+                <option value="fixed">固定长度</option>
+                <option value="sentence">按句子</option>
+                <option value="paragraph">按段落</option>
+                <option value="sliding_window">滑动窗口</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>分块大小</label>
+            <input type="number" id="upload-chunk-size" value="500">
+        </div>
+        <button class="btn btn-primary" onclick="uploadFiles()">上传并导入</button>
+    </div>
+</div>
+
+<!-- 导入结果 -->
+<div class="card">
+    <h2>导入结果</h2>
+    <div id="import-result" class="result-area">等待导入操作...</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function importFiles() {
+    const collectionName = document.getElementById('imp-collection').value.trim();
+    const filepaths = document.getElementById('imp-filepaths').value.trim();
+    if (!collectionName || !filepaths) { showAlert('import-alert', '请填写集合名称和文件路径', 'error'); return; }
+
+    const files = filepaths.split(',').map(f => f.trim()).filter(f => f);
+    showLoading('import-result');
+
+    try {
+        const data = await apiPost('/api/import/files', {
+            collection_name: collectionName,
+            file_paths: files,
+            chunk_size: parseInt(document.getElementById('imp-chunk-size').value),
+            chunk_overlap: parseInt(document.getElementById('imp-chunk-overlap').value),
+            chunk_strategy: document.getElementById('imp-strategy').value,
+        });
+        document.getElementById('import-result').textContent = JSON.stringify(data, null, 2);
+        showAlert('import-alert', `导入完成: ${data.total_chunks} 个分块`, 'success');
+    } catch (e) {
+        document.getElementById('import-result').textContent = '错误: ' + e.message;
+        showAlert('import-alert', '导入失败: ' + e.message, 'error');
+    }
+}
+
+async function importDir() {
+    const collectionName = document.getElementById('imp-collection').value.trim();
+    const dirPath = document.getElementById('imp-filepaths').value.trim();
+    if (!collectionName || !dirPath) { showAlert('import-alert', '请填写集合名称和目录路径', 'error'); return; }
+
+    showLoading('import-result');
+    try {
+        const data = await apiPost('/api/import/directory', {
+            collection_name: collectionName,
+            dir_path: dirPath,
+            chunk_size: parseInt(document.getElementById('imp-chunk-size').value),
+            chunk_overlap: parseInt(document.getElementById('imp-chunk-overlap').value),
+            chunk_strategy: document.getElementById('imp-strategy').value,
+        });
+        document.getElementById('import-result').textContent = JSON.stringify(data, null, 2);
+        showAlert('import-alert', `导入完成: ${data.total_chunks} 个分块`, 'success');
+    } catch (e) {
+        document.getElementById('import-result').textContent = '错误: ' + e.message;
+        showAlert('import-alert', '导入失败: ' + e.message, 'error');
+    }
+}
+
+async function uploadFiles() {
+    const collectionName = document.getElementById('upload-collection').value.trim();
+    const files = document.getElementById('upload-files').files;
+    if (!collectionName) { showAlert('import-alert', '请填写集合名称', 'error'); return; }
+    if (!files.length) { showAlert('import-alert', '请选择文件', 'error'); return; }
+
+    showLoading('import-result');
+    const formData = new FormData();
+    formData.append('collection_name', collectionName);
+    formData.append('chunk_strategy', document.getElementById('upload-strategy').value);
+    formData.append('chunk_size', document.getElementById('upload-chunk-size').value);
+    formData.append('chunk_overlap', '50');
+    for (let f of files) { formData.append('files', f); }
+
+    try {
+        const resp = await fetch('/api/import/upload', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || '上传失败');
+        document.getElementById('import-result').textContent = JSON.stringify(data, null, 2);
+        showAlert('import-alert', `上传导入完成: ${data.total_chunks} 个分块`, 'success');
+    } catch (e) {
+        document.getElementById('import-result').textContent = '错误: ' + e.message;
+        showAlert('import-alert', '上传失败: ' + e.message, 'error');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  code-review-agent:
+    build: .
+    container_name: code-review-agent
+    ports:
+      - "8000:8000"
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LOG_LEVEL=info
+    restart: unless-stopped

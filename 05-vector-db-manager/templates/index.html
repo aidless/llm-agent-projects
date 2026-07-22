@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}统计面板 - 向量数据库管理平台{% endblock %}
+{% set active_page = 'home' %}
+
+{% block content %}
+<h1 style="margin: 20px 0;">统计面板</h1>
+
+<!-- 统计卡片 -->
+<div class="stats-grid" id="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value" id="stat-collections">-</div>
+        <div class="stat-label">集合数量</div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-value" id="stat-documents">-</div>
+        <div class="stat-label">文档总数</div>
+    </div>
+    <div class="stat-card orange">
+        <div class="stat-value" id="stat-model">加载中</div>
+        <div class="stat-label">当前模型</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-value" id="stat-storage">-</div>
+        <div class="stat-label">存储占用 (MB)</div>
+    </div>
+</div>
+
+<div class="two-col">
+    <!-- 集合列表 -->
+    <div class="card">
+        <h2>集合列表</h2>
+        <div id="collections-table"></div>
+    </div>
+
+    <!-- 模型信息 -->
+    <div class="card">
+        <h2>模型信息</h2>
+        <div id="model-info"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 页面加载时获取统计数据
+async function loadStats() {
+    try {
+        const data = await apiGet('/api/statistics');
+        document.getElementById('stat-collections').textContent = data.total_collections;
+        document.getElementById('stat-documents').textContent = data.total_documents;
+        document.getElementById('stat-storage').textContent = data.storage_size_mb;
+
+        // 当前模型
+        const model = data.current_model || {};
+        const modelName = model.name || '未加载';
+        const shortName = modelName.length > 20 ? modelName.substring(0, 20) + '...' : modelName;
+        document.getElementById('stat-model').textContent = shortName;
+        document.getElementById('stat-model').title = modelName;
+
+        // 集合表格
+        let tableHtml = '';
+        if (data.collections && data.collections.length > 0) {
+            tableHtml = '<table><thead><tr><th>名称</th><th>文档数</th><th>模型</th><th>策略</th></tr></thead><tbody>';
+            data.collections.forEach(c => {
+                tableHtml += `<tr>
+                    <td><a href="/search">${c.name}</a></td>
+                    <td>${c.count}</td>
+                    <td><span class="badge badge-blue">${c.embedding_model || '-'}</span></td>
+                    <td><span class="badge badge-green">${c.chunk_strategy || '-'}</span></td>
+                </tr>`;
+            });
+            tableHtml += '</tbody></table>';
+        } else {
+            tableHtml = '<p style="color:#888;">暂无集合，请先在"模型管理"中加载模型，然后创建集合。</p>';
+        }
+        document.getElementById('collections-table').innerHTML = tableHtml;
+
+        // 模型信息
+        let modelHtml = '<table>';
+        modelHtml += `<tr><th>当前模型</th><td>${model.name || '未加载'}</td></tr>`;
+        modelHtml += `<tr><th>向量维度</th><td>${model.dimension || '-'}</td></tr>`;
+        modelHtml += `<tr><th>提供者类型</th><td>${model.provider_type || '-'}</td></tr>`;
+        modelHtml += `<tr><th>存储路径</th><td>${data.storage_path || '-'}</td></tr>`;
+        modelHtml += '</table>';
+
+        if (data.loaded_models && data.loaded_models.length > 0) {
+            modelHtml += '<h3>已加载模型列表</h3><table><thead><tr><th>模型</th><th>维度</th><th>类型</th><th>当前</th></tr></thead><tbody>';
+            data.loaded_models.forEach(m => {
+                const current = m.is_current ? '<span class="badge badge-green">当前</span>' : '';
+                modelHtml += `<tr><td>${m.name}</td><td>${m.dimension}</td><td>${m.provider_type}</td><td>${current}</td></tr>`;
+            });
+            modelHtml += '</tbody></table>';
+        }
+        document.getElementById('model-info').innerHTML = modelHtml;
+    } catch (e) {
+        showAlert('stats-grid', '加载统计失败: ' + e.message, 'error');
+    }
+}
+loadStats();
+</script>
+{% endblock %}

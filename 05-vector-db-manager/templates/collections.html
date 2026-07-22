@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}集合管理 - 向量数据库管理平台{% endblock %}
+{% set active_page = 'collections' %}
+
+{% block content %}
+<h1 style="margin: 20px 0;">集合管理</h1>
+
+<div class="alert" id="col-alert"></div>
+
+<!-- 创建集合 -->
+<div class="card">
+    <h2>创建新集合</h2>
+    <div class="inline-form">
+        <div class="form-group">
+            <label>集合名称</label>
+            <input type="text" id="col-name" placeholder="my_collection">
+        </div>
+        <div class="form-group">
+            <label>描述</label>
+            <input type="text" id="col-desc" placeholder="可选的描述信息">
+        </div>
+        <button class="btn btn-success" onclick="createCollection()">创建集合</button>
+    </div>
+</div>
+
+<!-- 集合列表 -->
+<div class="card">
+    <h2>现有集合</h2>
+    <div id="collections-list"><p style="color:#888;">加载中...</p></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadCollections() {
+    try {
+        const data = await apiGet('/api/collections');
+        let html = '';
+        if (data.collections && data.collections.length > 0) {
+            html = '<table><thead><tr><th>名称</th><th>文档数</th><th>ID</th><th>操作</th></tr></thead><tbody>';
+            data.collections.forEach(c => {
+                html += `<tr>
+                    <td><strong>${c.name}</strong></td>
+                    <td>${c.count}</td>
+                    <td style="font-size:12px;color:#888;">${c.id}</td>
+                    <td>
+                        <button class="btn btn-danger" style="padding:4px 12px;font-size:12px;" onclick="deleteCollection('${c.name}')">删除</button>
+                        <button class="btn btn-warning" style="padding:4px 12px;font-size:12px;" onclick="clearCollection('${c.name}')">清空</button>
+                    </td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+        } else {
+            html = '<p style="color:#888;">暂无集合</p>';
+        }
+        document.getElementById('collections-list').innerHTML = html;
+    } catch (e) {
+        document.getElementById('collections-list').innerHTML = '<p style="color:#e74c3c;">' + e.message + '</p>';
+    }
+}
+
+async function createCollection() {
+    const name = document.getElementById('col-name').value.trim();
+    if (!name) { showAlert('col-alert', '请输入集合名称', 'error'); return; }
+    try {
+        const desc = document.getElementById('col-desc').value.trim();
+        await apiPost('/api/collections', { name: name, description: desc });
+        showAlert('col-alert', '集合创建成功: ' + name, 'success');
+        document.getElementById('col-name').value = '';
+        document.getElementById('col-desc').value = '';
+        loadCollections();
+    } catch (e) {
+        showAlert('col-alert', '创建失败: ' + e.message, 'error');
+    }
+}
+
+async function deleteCollection(name) {
+    if (!confirm('确认删除集合 "' + name + '"？此操作不可恢复。')) return;
+    try {
+        await fetch('/api/collections/' + name, { method: 'DELETE' }).then(r => r.json());
+        showAlert('col-alert', '集合已删除: ' + name, 'success');
+        loadCollections();
+    } catch (e) {
+        showAlert('col-alert', '删除失败: ' + e.message, 'error');
+    }
+}
+
+async function clearCollection(name) {
+    if (!confirm('确认清空集合 "' + name + '"中的所有文档？')) return;
+    try {
+        await apiPost('/api/collections/' + name + '/clear', {});
+        showAlert('col-alert', '集合已清空: ' + name, 'success');
+        loadCollections();
+    } catch (e) {
+        showAlert('col-alert', '清空失败: ' + e.message, 'error');
+    }
+}
+
+loadCollections();
+</script>
+{% endblock %}

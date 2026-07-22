@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}模型管理 - 向量数据库管理平台{% endblock %}
+{% set active_page = 'models' %}
+
+{% block content %}
+<h1 style="margin: 20px 0;">Embedding 模型管理</h1>
+
+<div class="alert" id="model-alert"></div>
+
+<div class="two-col">
+    <!-- 加载模型 -->
+    <div class="card">
+        <h2>加载模型</h2>
+        <div class="form-group">
+            <label>提供者类型</label>
+            <select id="provider-type">
+                <option value="local">本地模型 (SentenceTransformers)</option>
+                <option value="openai">OpenAI API</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>模型名称</label>
+            <input type="text" id="model-name" placeholder="例如: BAAI/bge-small-zh-v1.5">
+            <small style="color:#888; display:block; margin-top:4px;">
+                本地模型: HuggingFace 模型标识 | OpenAI: text-embedding-ada-002
+            </small>
+        </div>
+        <div id="openai-fields" style="display:none;">
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="password" id="api-key" placeholder="sk-...">
+            </div>
+            <div class="form-group">
+                <label>API Base URL</label>
+                <input type="text" id="api-base" value="https://api.openai.com/v1">
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="loadModel()">加载模型</button>
+    </div>
+
+    <!-- 已加载模型列表 -->
+    <div class="card">
+        <h2>已加载模型</h2>
+        <div id="models-list"><p style="color:#888;">加载中...</p></div>
+    </div>
+</div>
+
+<!-- 常用模型 -->
+<div class="card">
+    <h2>常用模型推荐</h2>
+    <table>
+        <thead><tr><th>模型名称</th><th>类型</th><th>维度</th><th>说明</th></tr></thead>
+        <tbody>
+            <tr><td>BAAI/bge-small-zh-v1.5</td><td>本地</td><td>512</td><td>中文小模型，速度快</td></tr>
+            <tr><td>BAAI/bge-base-zh-v1.5</td><td>本地</td><td>768</td><td>中文基础模型，效果好</td></tr>
+            <tr><td>BAAI/bge-large-zh-v1.5</td><td>本地</td><td>1024</td><td>中文大模型，效果最好</td></tr>
+            <tr><td>all-MiniLM-L6-v2</td><td>本地</td><td>384</td><td>英文通用模型，轻量</td></tr>
+            <tr><td>paraphrase-multilingual-MiniLM-L12-v2</td><td>本地</td><td>384</td><td>多语言模型</td></tr>
+            <tr><td>text-embedding-ada-002</td><td>OpenAI</td><td>1536</td><td>OpenAI 嵌入模型</td></tr>
+            <tr><td>text-embedding-3-small</td><td>OpenAI</td><td>1536</td><td>OpenAI 新一代小模型</td></tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 切换 OpenAI 字段显示
+document.getElementById('provider-type').addEventListener('change', function() {
+    document.getElementById('openai-fields').style.display = this.value === 'openai' ? 'block' : 'none';
+});
+
+// 加载模型
+async function loadModel() {
+    const providerType = document.getElementById('provider-type').value;
+    const modelName = document.getElementById('model-name').value.trim();
+    if (!modelName) { showAlert('model-alert', '请输入模型名称', 'error'); return; }
+
+    try {
+        const body = { model_name: modelName, provider_type: providerType };
+        if (providerType === 'openai') {
+            body.api_key = document.getElementById('api-key').value;
+            body.api_base = document.getElementById('api-base').value;
+        }
+        const data = await apiPost('/api/models/load', body);
+        showAlert('model-alert', '模型加载成功: ' + data.model_name + ' (维度: ' + data.dimension + ')', 'success');
+        loadModelsList();
+    } catch (e) {
+        showAlert('model-alert', '加载失败: ' + e.message, 'error');
+    }
+}
+
+// 加载模型列表
+async function loadModelsList() {
+    try {
+        const data = await apiGet('/api/models');
+        let html = '';
+        if (data.models && data.models.length > 0) {
+            html = '<table><thead><tr><th>模型</th><th>维度</th><th>类型</th><th>状态</th></tr></thead><tbody>';
+            data.models.forEach(m => {
+                const current = m.is_current ? '<span class="badge badge-green">当前使用</span>' : '<span class="badge badge-orange">已加载</span>';
+                html += `<tr><td>${m.name}</td><td>${m.dimension}</td><td>${m.provider_type}</td><td>${current}</td></tr>`;
+            });
+            html += '</tbody></table>';
+        } else {
+            html = '<p style="color:#888;">暂无已加载的模型</p>';
+        }
+        document.getElementById('models-list').innerHTML = html;
+    } catch (e) {
+        document.getElementById('models-list').innerHTML = '<p style="color:#e74c3c;">加载失败: ' + e.message + '</p>';
+    }
+}
+loadModelsList();
+</script>
+{% endblock %}
