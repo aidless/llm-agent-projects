@@ -128,3 +128,51 @@ async def lifespan(app: FastAPI):
 
     # 关闭清理
     logger.info("Shutting down Voice AI Assistant...")
+    if session_manager:
+        session_manager.cleanup_expired()
+
+
+# ⚠️ 2026-07-22：app 对象必须放在 lifespan 之后（让 `from app.main import app`
+# 在测试和 uvicorn 都可用）。路由注册见文件末尾。
+app = FastAPI(
+    title="Voice AI Assistant",
+    description="ASR + LLM + TTS 全链路语音对话系统",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 注册路由
+from app.api import asr as asr_api  # noqa: E402
+from app.api import tts as tts_api  # noqa: E402
+from app.api import chat as chat_api  # noqa: E402
+
+app.include_router(asr_api.router)
+app.include_router(tts_api.router)
+app.include_router(chat_api.router)
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    """健康检查"""
+    return HealthResponse(
+        status="ok",
+        active_sessions=session_manager.get_active_count() if session_manager else 0,
+    )
+
+
+@app.websocket("/ws/voice")
+async def websocket_voice(websocket: WebSocket):
+    """WebSocket 语音对话端点"""
+    if ws_handler is None:
+        await websocket.close(code=1013, reason="Service not ready")
+        return
+    await ws_handler.handle_connection(websocket)

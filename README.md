@@ -24,6 +24,20 @@
 >
 > Every project has its own README with project-specific notes. **Read each
 > README's top section before evaluating the code.**
+>
+> **🆕 2026-07-22 hard-fix audit (security + correctness)**:
+>
+> | Area | What changed | Project |
+> |---|---|---|
+> | **SSRF** | Removed `requests.get(user_url)` blind fetch in agent tool | `02` |
+> | **Auth bypass** | `/execute` sandbox endpoint now requires Bearer token + per-IP token | `15` |
+> | **Mock hidden as real** | `MultiModalLLMClient.understand()` raises `NotImplementedError` instead of faking GPT-4o responses | `09` |
+> | **Mock hidden as real** | Memory consolidator raises `NotImplementedError` instead of returning canned digests | `18` |
+> | **Mock hidden as real** | Voice pipeline raises `NotImplementedError` instead of fake ASR/TTS | `19` |
+> | **Fake metric** | BERTScore placeholder replaced with `bert-score` package (or honest NaN) | `12` |
+> | **Regex NER** | Replaced 14 hardcoded regex rules with `zh_core_web_sm` spaCy pipeline | `16` |
+> | **API auth** | `/v1/chat/completions` now requires Bearer token; per-key rate limiting | `03` |
+> | **API auth** | `/chat`, `/chat/stream`, sessions & audit endpoints require Bearer token | `04` |
 
 ---
 
@@ -97,6 +111,29 @@ python -m uvicorn app.main:app --reload
 # or
 docker-compose up --build
 ```
+
+## Test Coverage Summary (2026-07-22)
+
+| # | Project | Tests | Pass | Notes |
+|---|---|---:|---:|---|
+| 03 | multi-model-gateway | 30 | ✅ | Auth dev-bypass via `GATEWAY_AUTH_DISABLED=true` |
+| 04 | guardrails-chat | 67 | ✅ | Auth dev-bypass via `GUARDRAILS_AUTH_DISABLED=true` |
+| 16 | kg-rag-fusion | 98 | ✅ | NER now spaCy zh_core_web_sm |
+| 17 | llm-observability | 89 | ✅ | |
+| 18 | agent-long-term-memory | 77 | ✅ | Mock consolidator → NotImplementedError |
+| 19 | voice-ai-assistant | 82 | ✅ | Mock ASR/TTS → NotImplementedError |
+| 20 | llm-eval-benchmark | 105 | ✅ | All benchmarks mocked, no LLM API required |
+| **Σ** | **7 projects with tests** | **548** | **✅** | |
+
+> **Methodology**: pytest on a single shared venv at `.ci-cache/venv/`
+> (Python 3.13.14). LLM calls disabled via `ALLOW_MOCK_PROVIDERS=true` etc.
+> Tests run **without** real API keys; coverage of LLM-path code is *not*
+> measured by these numbers (it would require live API + cost budget).
+>
+> **Projects without test suites (2026-07-22)**: `01`, `02`, `05`, `06`,
+> `07`, `09`, `11`, `12`, `14`, `15`. Of these, `01` has the highest
+> priority for adding tests (already-strong project), followed by `02`
+> (post-SSRF fix) and `15` (post-auth fix).
 
 ## Tech Stack (common)
 
