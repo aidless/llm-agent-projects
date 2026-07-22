@@ -9,9 +9,11 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.auth import init_auth, is_auth_enabled, verify_token
 from app.config import get_config, AppConfig
 from app.models import (
     ChatCompletionRequest,
@@ -51,6 +53,9 @@ async def lifespan(app: FastAPI):
     logger.info(f"  最大并发数: {_config.max_concurrent_requests}")
     logger.info(f"  请求超时: {_config.request_timeout}s")
 
+    # ⚠️ 2026-07-22: 初始化 Bearer Token 鉴权（fail-safe 启动检查）
+    init_auth()
+
     # 初始化请求队列
     get_request_queue(
         max_concurrent=_config.max_concurrent_requests,
@@ -89,6 +94,22 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# ⚠️ 2026-07-22: CORS 收紧。生产环境必须显式配置允许来源；之前默认 allow_origins=* 是 P0 风险。
+import os as _os
+_allowed_origins = _os.getenv("GATEWAY_CORS_ORIGINS", "").split(",")
+_allowed_origins = [o.strip() for o in _allowed_origins if o.strip()]
+if _allowed_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
+    logger.info(f"  CORS allowed origins: {_allowed_origins}")
+else:
+    logger.warning("  GATEWAY_CORS_ORIGINS 未配置，CORS 中间件未启用（仅服务端调用）")
 
 
 async def _handle_chat_request(request: ChatCompletionRequest) -> ChatCompletionResponse:
@@ -226,7 +247,7 @@ def _record_stats(
 # ==================== API 路由 ====================
 
 
-@app.post("/v1/chat/completions")
+@app.post("/v1/chat/completions", dependencies=[Depends(verify_token)])
 async def chat_completions(request: Request):
     """
     聊天补全 API - 兼容 OpenAI API 格式
@@ -263,7 +284,7 @@ async def chat_completions(request: Request):
     return JSONResponse(content=result.to_openai_dict())
 
 
-@app.get("/v1/models")
+@app.get("/v1/models", dependencies=[Depends(verify_token)])
 async def list_models():
     """
     列出所有可用的模型
@@ -296,7 +317,7 @@ async def list_models():
 @app.get("/health")
 async def health_check():
     """
-    健康检查接口
+    健康检查接口（公开，无需认证 — LB / K8s 探针必须可访问）
     返回网关运行状态和各组件健康情况
     """
     manager = get_adapter_manager()
@@ -306,6 +327,7 @@ async def health_check():
         "status": "healthy",
         "available_models": manager.get_available_models(),
         "queue": req_queue.get_stats(),
+        "auth_enabled": is_auth_enabled(),  # 2026-07-22: 让运维一眼看出认证是否启用
     }
 
 

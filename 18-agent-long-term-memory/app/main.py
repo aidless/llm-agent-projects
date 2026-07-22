@@ -1,11 +1,45 @@
 """
 FastAPI 入口 - Agent 长期记忆系统。
+
+⚠️ **2026-07-22 重要提示**：原服务 `MemoryManager` 默认使用
+`MockLLMConsolidator`（基于关键词重叠 + 截断的整合，不是真 LLM）。
+本版本启动时检查 `CONSOLIDATOR_PROVIDER` 环境变量。
+
+启动示例：
+    # Mock consolidator (本地测试；只能基于 keyword 聚类)
+    export CONSOLIDATOR_PROVIDER=keyword
+    uvicorn app.main:app
+
+    # 真 LLM (推荐) — 需要实现 LLMConsolidator 类
+    export CONSOLIDATOR_PROVIDER=openai
+    export OPENAI_API_KEY=sk-xxx
+    uvicorn app.main:app
+
+    # 默认 keyword 整合器 + WARNING（开发场景可接受）
+    unset CONSOLIDATOR_PROVIDER   # 默认 keyword
 """
+
+import logging
+import os
 
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+logger = logging.getLogger(__name__)
+
+_CONSOLIDATOR_PROVIDER = os.getenv("CONSOLIDATOR_PROVIDER", "keyword").lower()
+
+
+def _warn_if_mock_consolidator():
+    if _CONSOLIDATOR_PROVIDER == "keyword":
+        logger.warning("=" * 60)
+        logger.warning("  ⚠️  CONSOLIDATOR_PROVIDER=keyword (默认)")
+        logger.warning("  记忆整合基于关键词重叠 + 截断，不是真 LLM 摘要")
+        logger.warning("  生产部署建议：CONSOLIDATOR_PROVIDER=openai (待实现)")
+        logger.warning("=" * 60)
+
 
 from manager.memory_manager import MemoryManager
 
@@ -17,6 +51,7 @@ manager = MemoryManager()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理。"""
+    _warn_if_mock_consolidator()
     # 启动时初始化
     from app.api.memory import set_manager as set_memory_manager
     from app.api.search import set_manager as set_search_manager
@@ -36,13 +71,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS（2026-07-22: 收紧）
+_cors_origins = os.getenv("MEMORY_CORS_ORIGINS", "").split(",")
+_cors_origins = [o.strip() for o in _cors_origins if o.strip()]
+if _cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "DELETE"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
+else:
+    logger.warning("MEMORY_CORS_ORIGINS 未配置，CORS 中间件未启用")
 
 # 注册路由
 from app.api.memory import router as memory_router
@@ -60,9 +101,13 @@ async def root():
         "name": "Agent Long-Term Memory System",
         "version": "1.0.0",
         "docs": "/docs",
+        "consolidator_provider": _CONSOLIDATOR_PROVIDER,
     }
 
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "consolidator_provider": _CONSOLIDATOR_PROVIDER,
+    }

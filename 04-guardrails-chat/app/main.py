@@ -18,7 +18,7 @@ import time
 import json
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -28,6 +28,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from app.auth import init_auth as _init_auth, is_auth_enabled, verify_token
 from app.config import AppConfig
 from app.conversation import ConversationManager
 from app.audit import AuditLogger
@@ -153,20 +154,33 @@ def create_app(config: Optional[AppConfig] = None) -> FastAPI:
         version="1.0.0",
     )
 
-    # CORS 中间件
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # CORS 中间件（2026-07-22: 收紧）
+    _cors_origins = os.getenv("GUARDRAILS_CORS_ORIGINS", "").split(",")
+    _cors_origins = [o.strip() for o in _cors_origins if o.strip()]
+    if _cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=_cors_origins,
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "DELETE"],
+            allow_headers=["Authorization", "Content-Type"],
+        )
+        import logging as _logging
+        _logging.getLogger(__name__).info(f"CORS allowed origins: {_cors_origins}")
+    else:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "GUARDRAILS_CORS_ORIGINS 未配置，CORS 中间件未启用（仅服务端调用）"
+        )
+
+    # ⚠️ 2026-07-22: Bearer Token 鉴权（fail-safe 启动检查）
+    _init_auth()
 
     # ========== 路由 ==========
 
     @app.get("/health")
     async def health_check():
-        """健康检查接口"""
+        """健康检查接口（公开，LB / K8s 探针）"""
         return {
             "status": "healthy",
             "version": "1.0.0",
@@ -181,9 +195,10 @@ def create_app(config: Optional[AppConfig] = None) -> FastAPI:
                 "api_base": config.llm.api_base,
                 "api_key_set": bool(config.llm.api_key),
             },
+            "auth_enabled": is_auth_enabled(),  # 2026-07-22
         }
 
-    @app.post("/chat", response_model=ChatResponseModel)
+    @app.post("/chat", response_model=ChatResponseModel, dependencies=[Depends(verify_token)])
     async def chat(request: ChatRequest):
         """
         发送消息并获取回复
@@ -446,7 +461,7 @@ def create_app(config: Optional[AppConfig] = None) -> FastAPI:
             metadata=chat_response.metadata,
         )
 
-    @app.post("/chat/stream")
+    @app.post("/chat/stream", dependencies=[Depends(verify_token)])
     async def chat_stream(request: ChatRequest):
         """
         流式聊天接口
@@ -506,12 +521,12 @@ def create_app(config: Optional[AppConfig] = None) -> FastAPI:
             media_type="text/event-stream",
         )
 
-    @app.get("/sessions", response_model=list)
+    @app.get("/sessions", response_model=list, dependencies=[Depends(verify_token)])
     async def list_sessions():
         """列出所有会话"""
         return conversation_manager.list_sessions()
 
-    @app.get("/sessions/{session_id}")
+    @app.get("/sessions/{session_id}", dependencies=[Depends(verify_token)])
     async def get_session(session_id: str):
         """获取指定会话详情"""
         session = conversation_manager.get_session(session_id)
@@ -519,7 +534,7 @@ def create_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="会话不存在")
         return session.to_dict()
 
-    @app.get("/sessions/{session_id}/history")
+    @app.get("/sessions/{session_id}/history", dependencies=[Depends(verify_token)])
     async def get_session_history(session_id: str):
         """获取会话的历史消息"""
         history = conversation_manager.get_history(session_id)
@@ -527,7 +542,7 @@ def create_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="会话不存在或没有历史记录")
         return {"session_id": session_id, "messages": history}
 
-    @app.delete("/sessions/{session_id}")
+    @app.delete("/sessions/{session_id}", dependencies=[Depends(verify_token)])
     async def delete_session(session_id: str):
         """删除指定会话"""
         success = conversation_manager.delete_session(session_id)
@@ -535,7 +550,7 @@ def create_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="会话不存在")
         return {"message": f"会话 {session_id} 已删除"}
 
-    @app.get("/audit/{session_id}")
+    @app.get("/audit/{session_id}", dependencies=[Depends(verify_token)])
     async def get_audit_logs(session_id: str):
         """查询指定会话的审计日志"""
         events = audit_logger.get_events_by_session(session_id)
@@ -545,7 +560,7 @@ def create_app(config: Optional[AppConfig] = None) -> FastAPI:
             "count": len(events),
         }
 
-    @app.post("/safety/check")
+    @app.post("/safety/check", dependencies=[Depends(verify_token)])
     async def check_safety(request: ChatRequest):
         """
         独立的安全检查接口（不调用 LLM）

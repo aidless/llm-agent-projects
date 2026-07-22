@@ -1,9 +1,27 @@
-"""Entity and Relation Extractor - Rule-based + LLM mock."""
+"""Entity and Relation Extractor - Rule-based + LLM mock.
+
+⚠️ **2026-07-22**：原版只用硬编码 regex 字典（OpenAI/Hinton/Transformer 等），
+对未登录词无效。本版本新增 `provider="spacy"` 选项，使用 `zh_core_web_trf`
+做真实 NER。默认仍为 `regex`（向后兼容 + 测试不需重跑）。
+
+用法：
+    # 默认 regex 字典（仅匹配 ~30 个已知实体）
+    ext = Extractor()
+
+    # spacy 中文 NER（推荐，需安装：pip install spacy && python -m spacy download zh_core_web_trf）
+    ext = Extractor(provider="spacy", spacy_model="zh_core_web_trf")
+
+    # 自动回退：spacy 不可用 → regex
+    ext = Extractor(provider="spacy", spacy_fallback_to_regex=True)
+"""
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 # ── Predefined rule patterns for NER ────────────────────────────────
 
@@ -26,12 +44,65 @@ _CONCEPT_PATTERNS: List[Dict[str, str]] = [
 
 _ALL_PATTERNS = _TECH_PATTERNS + _ORG_PATTERNS + _PERSON_PATTERNS + _CONCEPT_PATTERNS
 
+# spacy 中文 NER 标签 → 我们内部类型映射
+_SPACY_LABEL_MAP = {
+    "PERSON": "Person",
+    "ORG": "Organization",
+    "GPE": "Organization",      # 地缘政治实体（国家/城市）按 Org 处理
+    "LOC": "Organization",
+    "PRODUCT": "Technology",
+    "EVENT": "Concept",
+    "WORK_OF_ART": "Concept",
+    "LAW": "Concept",
+    "LANGUAGE": "Concept",
+}
+
 
 class Extractor:
     """Extract entities and relations from text using rules + LLM mock."""
 
-    def __init__(self, use_llm_mock: bool = True) -> None:
+    def __init__(
+        self,
+        use_llm_mock: bool = True,
+        provider: str = "regex",
+        spacy_model: str = "zh_core_web_trf",
+        spacy_fallback_to_regex: bool = True,
+    ) -> None:
+        """初始化 Extractor。
+
+        Args:
+            use_llm_mock: 是否启用 LLM mock（仅对 regex provider 有效）
+            provider: "regex"（默认，硬编码字典）或 "spacy"（真 NER）
+            spacy_model: spacy 模型名，默认 "zh_core_web_trf"（~500MB）
+            spacy_fallback_to_regex: spacy 加载失败时是否回退到 regex
+        """
         self.use_llm_mock = use_llm_mock
+        self.provider = provider
+        self.spacy_fallback_to_regex = spacy_fallback_to_regex
+        self._spacy_nlp = None
+
+        if provider == "spacy":
+            self._load_spacy(spacy_model)
+
+    def _load_spacy(self, model_name: str) -> None:
+        """懒加载 spacy 模型；失败时按 spacy_fallback_to_regex 处理。"""
+        try:
+            import spacy  # noqa: F401
+            import spacy.cli  # noqa: F401  (ensure CLI is available for model download)
+
+            self._spacy_nlp = spacy.load(model_name)
+            logger.info(f"spaCy NER 加载成功: {model_name}")
+        except Exception as e:
+            msg = f"spaCy 模型 '{model_name}' 加载失败: {e}"
+            if self.spacy_fallback_to_regex:
+                logger.warning(f"{msg}。回退到 regex provider。")
+                self.provider = "regex"
+            else:
+                raise RuntimeError(
+                    f"{msg}。请先下载模型：\n"
+                    f"  python -m spacy download {model_name}\n"
+                    "或设置 spacy_fallback_to_regex=True。"
+                )
 
     # ── Entity extraction ───────────────────────────────────────────
 
@@ -40,6 +111,11 @@ class Extractor:
 
         Returns list of {"name": ..., "type": ..., "entity_id": ...}.
         """
+        if self.provider == "spacy" and self._spacy_nlp is not None:
+            return self._spacy_extract_entities(text)
+        return self._regex_extract_entities(text)
+
+    def _regex_extract_entities(self, text: str) -> List[Dict[str, str]]:
         entities: List[Dict[str, str]] = []
         seen: set = set()
 
@@ -61,10 +137,37 @@ class Extractor:
 
         return entities
 
+    def _spacy_extract_entities(self, text: str) -> List[Dict[str, str]]:
+        """用 spaCy 中文模型做真实 NER。"""
+        assert self._spacy_nlp is not None, "spaCy model not loaded"
+        # spacy 中文模型对长度有限制，超长文本分段处理
+        MAX_CHARS = 100_000
+        chunks = [text[i : i + MAX_CHARS] for i in range(0, len(text), MAX_CHARS)]
+
+        entities: List[Dict[str, str]] = []
+        seen: set = set()
+
+        for chunk in chunks:
+            doc = self._spacy_nlp(chunk)
+            for ent in doc.ents:
+                label = _SPACY_LABEL_MAP.get(ent.label_, "Concept")
+                name = ent.text.strip()
+                if name and name not in seen and len(name) >= 2:
+                    seen.add(name)
+                    entities.append(
+                        {
+                            "name": name,
+                            "type": label,
+                            "entity_id": self._make_entity_id(name),
+                            "spacy_label": ent.label_,
+                        }
+                    )
+        return entities
+
     def _llm_mock_extract(
         self, text: str, already_seen: set
     ) -> List[Dict[str, str]]:
-        """Simulate LLM entity extraction."""
+        """Simulate LLM entity extraction (regex provider only)."""
         additional: List[Dict[str, str]] = []
         # Simple heuristic: capitalized words not yet extracted
         words = re.findall(r"\b[A-Z][a-zA-Z]{1,}(?:\s+[A-Z][a-zA-Z]+)*\b", text)
