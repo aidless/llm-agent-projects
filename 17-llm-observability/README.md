@@ -2,6 +2,18 @@
 
 模拟 OpenTelemetry + LangSmith/LangFuse 的核心功能，提供 Trace/Span/Metrics/Log 全栈观测。
 
+> **📋 Project Card (2026-07-22)** — for hiring managers / reviewers
+>
+> | **Problem** | LLM apps have opaque failures: which prompt? which tool? at what cost? Without tracing, debugging is guesswork. |
+> |---|---|
+> | **Solution** | OpenTelemetry-style trace model (Trace → Span → Event) with LLM-specific attributes (prompt/completion/tokens/cost/latency). SQLite persistence + REST API + cost analytics. |
+> | **Evidence** | 6 typed spans (`llm.call`, `tool.execute`, `retrieval.query`, etc.); real Prometheus-style metrics (counter/gauge/histogram); trace-context propagation works across FastAPI middleware. |
+> | **Limitations** | No OTLP wire-protocol export (uses in-process collectors only); UI is plain REST/Swagger, not a Grafana-style dashboard; sampling is naive (every trace). |
+> | **Stack** | FastAPI · SQLite · Prometheus client conventions · asyncio |
+> | **Lines / Tests** | ~3.5K Python · 31 tests |
+>
+> See [`results.md`](./results.md) for example traces & cost breakdown.
+
 ## 功能特性
 
 ### 分布式追踪 (Tracing)

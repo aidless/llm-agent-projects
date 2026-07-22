@@ -2,6 +2,18 @@
 
 为 AI Agent 代码执行提供安全隔离环境，支持系统调用拦截、资源限制和行为审计。
 
+> **📋 Project Card (2026-07-22)** — for hiring managers / reviewers
+>
+> | **Problem** | AI Agent code execution is the highest-risk attack surface — prompt injection can coerce the agent to run arbitrary code. |
+> |---|---|
+> | **Solution** | Multi-layer sandbox: RestrictedPython AST whitelist → syscall interceptor (blocks `exec/eval/__import__/open/os/subprocess`) → resource limits (timeout/mem/output/concurrency) → audit log. 4 policy levels (LOW/MEDIUM/HIGH/STRICT) with inheritance. |
+> | **Evidence** | Blocks real attack vectors: `eval("__import__('os').system('rm -rf /')")` → blocked at AST; SSRF to AWS metadata (`169.254.169.254`) → blocked at network guard; `Bearer` auth required since 2026-07-22 audit (was previously open). |
+> | **Limitations** | RestrictedPython ≠ OS-level sandbox; determined attacker with sub-process bypass can still escape. Use `gVisor`/`firecracker` for production. Audit log is local SQLite only. |
+> | **Stack** | FastAPI · RestrictedPython · AST · SQLite · Bearer-auth middleware |
+> | **Lines / Tests** | ~3.8K Python · 41 tests (incl. 6 auth) |
+>
+> See [`results.md`](./results.md) for attack-vector pass/fail matrix.
+
 > **🔐 安全提示（2026-07-22 更新）**：`/api/v1/execute` 端点现在需要 Bearer Token 鉴权（之前是开放的，构成 critical 安全漏洞）。详见下方 [🔐 Authentication](#-authentication) 一节。
 
 ## 核心功能

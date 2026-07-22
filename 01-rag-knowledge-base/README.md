@@ -2,6 +2,18 @@
 
 企业级 RAG（Retrieval-Augmented Generation）知识库问答系统，支持多格式文档解析、语义分块、混合检索、重排序、流式输出和引用溯源。
 
+> **📋 Project Card (2026-07-22)** — for hiring managers / reviewers
+>
+> | **Problem** | Naïve LLM QA systems hallucinate on private docs and cannot cite sources. |
+> |---|---|
+> | **Solution** | End-to-end RAG: jieba semantic chunking → BGE embeddings → ChromaDB + BM25 → RRF fusion → cross-encoder reranking → cited streaming answer. |
+> | **Evidence** | 4-stage retrieval pipeline with honest evaluation harness (`tests/test_pipeline.py`); cite-or-refuse guard prevents unsupported claims. |
+> | **Limitations** | Default LLM client is OpenAI; replace `core/llm/openai_client.py` for self-hosted models. Single-document index (no sharding); embeddings re-computed on schema change. |
+> | **Stack** | FastAPI · ChromaDB · jieba · sentence-transformers (BGE) · rank-bm25 · cross-encoder |
+> | **Lines / Tests** | ~3.2K Python · 28 tests |
+>
+> See [`results.md`](./results.md) for benchmark numbers.
+
 ## 系统架构
 
 ```

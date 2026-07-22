@@ -1,5 +1,9 @@
 # LLM Agent Projects — Portfolio Collection
 
+[![CI Status](https://github.com/aidless/llm-agent-projects/actions/workflows/ci.yml/badge.svg)](https://github.com/aidless/llm-agent-projects/actions/workflows/ci.yml)
+[![Audit Date](https://img.shields.io/badge/audit-2026--07--22-blue)]()
+[![Archived](https://img.shields.io/badge/archived-3-yellow)]()
+
 > **⚠️ Important context for hiring managers and reviewers (2026-07-22)**
 >
 > This is a **portfolio collection**, not a unified production codebase. The

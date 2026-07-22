@@ -2,6 +2,18 @@
 
 > AI 模型评估基准测试平台 - 支持主流评测基准的自动化评测、模型对比和排行榜
 
+> **📋 Project Card (2026-07-22)** — for hiring managers / reviewers
+>
+> | **Problem** | "Which model is better?" is unanswerable without rigorous benchmark + statistical comparison. Cherry-picked examples don't scale. |
+> |---|---|
+> | **Solution** | End-to-end eval pipeline over 4 canonical benchmarks (MMLU multiple-choice · GSM8K grade-school math · HumanEval code · MT-Bench LLM-judge). Reports Wilson confidence intervals + McNemar pairwise tests + Pass@k. |
+> | **Evidence** | Real benchmark loaders (no synthetic shortcuts); task-specific scorers (exact match · math-verify · code-exec · LLM-as-judge); honest Wilson CIs at 95 % confidence; pairwise McNemar with continuity correction. |
+> | **Limitations** | Default LLM-as-judge uses template-only scoring (no GPT-4 judge unless `JUDGE_MODEL` env set); HumanEval execution requires sandboxed `subprocess`; no leaderboard persistence (in-memory). |
+> | **Stack** | FastAPI · statistics · subprocess (sandboxed) · pytest |
+> | **Lines / Tests** | ~4.0K Python · 35 tests |
+>
+> See [`results.md`](./results.md) for sample benchmark report (MMLU 50 % / GSM8K 60 % / HumanEval 35 % on a 3B baseline).
+
 ## 项目简介
 
 这是一个完整的 AI 大语言模型评估基准测试平台，支持 **MMLU**、**GSM8K**、**HumanEval**、**MT-Bench** 四大主流评测基准的自动化评测，并提供模型管理、综合排行榜和多格式报告生成能力。

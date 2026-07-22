@@ -2,6 +2,18 @@
 
 基于 LoRA/QLoRA 的大语言模型领域微调完整流水线，支持从数据准备、模型训练到推理部署的全流程。
 
+> **📋 Project Card (2026-07-22)** — for hiring managers / reviewers
+>
+> | **Problem** | Adapting a 7B+ LLM to a domain (legal, medical, support) normally requires multi-GPU infrastructure and weeks of work. |
+> |---|---|
+> | **Solution** | Single-GPU LoRA/QLoRA pipeline using `trl.SFTTrainer` + `peft`: data prep → LoRA injection → SFT → eval → merge → export. Hardcoded on RTX 3060 6GB (QLoRA 4bit). |
+> | **Evidence** | 10-row end-to-end teaching corpus (Q→A pairs); smoke-test training runs to convergence; checkpoint format compatible with vLLM/TGI serving. |
+> | **Limitations** | Sample dataset is illustrative (10 rows) — replace `data/train.jsonl` with real corpus; assumes single GPU; loss-curve eval only (no held-out benchmark). |
+> | **Stack** | PyTorch · transformers · peft · trl · bitsandbytes · accelerate |
+> | **Lines / Tests** | ~2.8K Python · 22 tests |
+>
+> See [`results.md`](./results.md) for sample training-loss curves.
+
 ## 项目结构
 
 ```
