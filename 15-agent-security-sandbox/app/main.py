@@ -23,13 +23,17 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS
+# CORS — tightened from `allow_origins=["*"]` (was a security risk combined
+# with the unauthenticated /execute endpoint). If you need browser access,
+# set SANDBOX_CORS_ORIGINS=https://your-frontend.example.com before starting.
+_cors_origins_env = os.environ.get("SANDBOX_CORS_ORIGINS", "")
+_cors_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()] or ["http://localhost:3000"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 
 # 注册路由
@@ -44,6 +48,10 @@ async def root():
         "name": "AI Agent Security Sandbox",
         "version": "1.0.0",
         "docs": "/docs",
+        "auth": {
+            "token_configured": bool(os.environ.get("SANDBOX_AUTH_TOKEN")),
+            "dev_bypass": os.environ.get("SANDBOX_AUTH_DISABLED", "").lower() == "true",
+        },
     }
 
 

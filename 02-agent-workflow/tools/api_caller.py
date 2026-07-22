@@ -34,16 +34,60 @@ def _get_api_client() -> httpx.AsyncClient:
 
 
 def _check_url_safe(url: str) -> bool:
-    """检查 URL 是否在允许的域名白名单内"""
+    """检查 URL 是否在允许的域名白名单内，并屏蔽内网/元数据端点（SSRF 防护）。
+
+    安全策略：
+    1. 若 ALLOWED_DOMAINS 为空 → 拒绝所有（fail-safe 默认）
+    2. host 必须是白名单中的字面域名
+    3. host 若解析为内网/loopback/link-local IP → 拒绝
+    4. host 若指向常见云元数据端点 → 拒绝（即使白名单包含字面 "169.254.169.254"）
+    """
+    # Cloud metadata endpoints — always blocked regardless of whitelist
+    BLOCKED_HOSTS = {
+        "169.254.169.254",          # AWS / OpenStack / Azure
+        "metadata.google.internal", # GCP
+        "metadata.azure.com",        # Azure (newer)
+        "100.100.100.200",           # Aliyun
+        "127.0.0.1", "localhost", "0.0.0.0",  # loopback
+    }
+
+    # 1. Fail-safe: empty whitelist → deny all
+    if not ALLOWED_DOMAINS:
+        logger.warning("[API工具] ALLOWED_DOMAINS 为空，拒绝所有外部请求")
+        return False
+
     try:
         from urllib.parse import urlparse
         parsed = urlparse(url)
         domain = parsed.hostname
+
+        if not domain:
+            return False
+
+        # 2. Block metadata / loopback
+        if domain.lower() in BLOCKED_HOSTS:
+            logger.warning(f"[API工具] SSRF 拦截: 元数据/loopback 端点 {domain}")
+            return False
+
+        # 3. Block private IP ranges (avoid DNS rebinding)
+        import ipaddress
+        try:
+            ip = ipaddress.ip_address(domain)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                logger.warning(f"[API工具] SSRF 拦截: 内网 IP {domain}")
+                return False
+        except ValueError:
+            # domain is not an IP literal — it's a hostname, OK
+            pass
+
+        # 4. Whitelist match
         if domain in ALLOWED_DOMAINS:
             return True
-        # 如果白名单为空或配置中未限制，则允许所有（开发模式）
-        return True
-    except Exception:
+
+        logger.warning(f"[API工具] SSRF 拦截: 域名 {domain} 不在白名单中")
+        return False
+    except Exception as e:
+        logger.error(f"[API工具] URL 安全检查异常: {e}")
         return False
 
 

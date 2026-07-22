@@ -2,6 +2,8 @@
 
 为 AI Agent 代码执行提供安全隔离环境，支持系统调用拦截、资源限制和行为审计。
 
+> **🔐 安全提示（2026-07-22 更新）**：`/api/v1/execute` 端点现在需要 Bearer Token 鉴权（之前是开放的，构成 critical 安全漏洞）。详见下方 [🔐 Authentication](#-authentication) 一节。
+
 ## 核心功能
 
 - **代码沙箱**: 基于 RestrictedPython 的 AST 级别代码限制，支持安全执行
@@ -90,3 +92,33 @@ curl http://localhost:8000/api/v1/audit/reports/security
 ```bash
 pytest tests/ -v
 ```
+
+## 🔐 Authentication
+
+The `/api/v1/execute` and `/api/v1/execute/{execution_id}` endpoints require a Bearer Token. Health checks (`/`, `/health`, `/ready`) remain public.
+
+### Quick start
+
+```bash
+# Generate a token
+export SANDBOX_AUTH_TOKEN=$(python -c "from app.auth import generate_dev_token; print(generate_dev_token())")
+
+# Start the sandbox
+python main.py
+
+# Call the execute endpoint
+curl -X POST http://localhost:8000/api/v1/execute \
+  -H "Authorization: Bearer $SANDBOX_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"code": "print(\"hello\")", "policy_name": "medium"}'
+```
+
+### Behavior matrix
+
+| `SANDBOX_AUTH_TOKEN` | `SANDBOX_AUTH_DISABLED` | Behavior on `/execute` |
+|---|---|---|
+| set | (any) | 200 if token matches, 401 otherwise |
+| unset | `true` | 200 (dev bypass, loud WARNING in logs) |
+| unset | unset | **503** (refuses by default — fail-safe) |
+
+**Production must always set `SANDBOX_AUTH_TOKEN`.** The dev-bypass is for local hacking only.

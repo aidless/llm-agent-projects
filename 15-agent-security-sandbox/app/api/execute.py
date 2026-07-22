@@ -1,7 +1,8 @@
 """代码执行 API"""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth import verify_token
 from app.models import ExecuteRequest, ExecuteResponse, ErrorResponse
 from sandbox.executor import SandboxExecutor
 from policy.engine import engine as policy_engine
@@ -20,9 +21,10 @@ executor = SandboxExecutor(audit_logger=audit_logger)
 @router.post(
     "/execute",
     response_model=ExecuteResponse,
-    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
     summary="执行代码",
-    description="在安全沙箱中执行 Python 代码",
+    description="在安全沙箱中执行 Python 代码（需要 Bearer Token 鉴权）",
+    dependencies=[Depends(verify_token)],
 )
 async def execute_code(request: ExecuteRequest):
     """在安全沙箱中执行 Python 代码"""
@@ -59,7 +61,8 @@ async def execute_code(request: ExecuteRequest):
     "/execute/{execution_id}",
     response_model=ExecuteResponse,
     summary="获取执行结果",
-    description="根据 execution_id 获取执行结果快照",
+    description="根据 execution_id 获取执行结果快照（需要 Bearer Token 鉴权）",
+    dependencies=[Depends(verify_token)],
 )
 async def get_execution_result(execution_id: str):
     """获取指定执行的快照"""

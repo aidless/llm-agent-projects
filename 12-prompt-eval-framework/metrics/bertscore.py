@@ -1,69 +1,80 @@
 from typing import Any, Dict, List
 
-import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-
 from .base import BaseMetric
 
 
 class BERTScoreMetric(BaseMetric):
-    """BERTScore 模拟实现，使用 TfidfVectorizer + cosine_similarity。"""
+    """Semantic similarity metric using sentence-transformers.
 
-    def __init__(self, ngram_range: tuple = (1, 2), analyzer: str = "word"):
+    ⚠️ **Honesty note (2026-07-22 audit fix)**:
+    The previous implementation computed TF-IDF cosine similarity + token
+    overlap, and was misleadingly named "BERTScore". That was incorrect:
+    the original BERTScore (Zhang et al., ICLR 2020) uses contextual
+    BERT embeddings for token-level greedy matching.
+
+    This class now uses `sentence-transformers` to compute *semantic*
+    similarity (a related but distinct metric). It is honest about what it
+    computes. The class name `BERTScoreMetric` is preserved for backward
+    compatibility but the returned metric `name` is `semantic_similarity`.
+
+    For the true BERTScore metric, install `bert-score` and call
+    `bert_score.score(cands, refs, lang="en", model_type=...)` directly.
+    This class does NOT depend on the original BERTScore paper formulas.
+
+    Dependencies: `pip install sentence-transformers` (~80MB model on first
+    `compute()` call, runs on CPU).
+    """
+
+    DEFAULT_MODEL = "all-MiniLM-L6-v2"
+
+    def __init__(self, model_name: str = DEFAULT_MODEL):
         super().__init__(
-            name="bertscore",
-            description="BERTScore (simulated with TF-IDF + cosine similarity)"
+            name="semantic_similarity",
+            description=(
+                "Sentence-transformer cosine similarity (NOT the original "
+                "BERTScore from Zhang et al., ICLR 2020). Honest semantic "
+                "similarity using all-MiniLM-L6-v2 by default."
+            ),
         )
-        self.ngram_range = ngram_range
-        self.analyzer = analyzer
+        self.model_name = model_name
+        self._model = None  # lazy load
+
+    def _ensure_model(self):
+        if self._model is not None:
+            return
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as e:
+            raise RuntimeError(
+                "sentence-transformers is not installed. Run:\n"
+                "  pip install sentence-transformers\n"
+                "Then retry. The first call will download the model "
+                f"({self.model_name}, ~80MB)."
+            ) from e
+        self._model = SentenceTransformer(self.model_name)
 
     def compute(self, predictions: List[str], references: List[str], **kwargs) -> Dict[str, Any]:
         if len(predictions) != len(references):
             raise ValueError("predictions 和 references 长度必须相同")
+        if not predictions:
+            return {"semantic_similarity": 0.0, "n": 0}
 
-        all_texts = list(predictions) + list(references)
-        vectorizer = TfidfVectorizer(
-            ngram_range=self.ngram_range,
-            analyzer=self.analyzer,
-            stop_words="english",
-        )
-        tfidf_matrix = vectorizer.fit_transform(all_texts)
-        n = len(predictions)
+        self._ensure_model()
+        import numpy as np
 
-        pred_vectors = tfidf_matrix[:n]
-        ref_vectors = tfidf_matrix[n:]
+        pred_emb = self._model.encode(predictions, convert_to_numpy=True, normalize_embeddings=True)
+        ref_emb = self._model.encode(references, convert_to_numpy=True, normalize_embeddings=True)
 
-        similarities = np.array([
-            cosine_similarity(pred_vectors[i], ref_vectors[i])[0][0]
-            for i in range(n)
-        ])
-
-        # 模拟 Precision/Recall/F1：以余弦相似度作为 F1 基础，
-        # 用简单的 token overlap 模拟 precision 和 recall
-        precisions = []
-        recalls = []
-
-        for pred, ref in zip(predictions, references):
-            pred_tokens = set(pred.lower().split())
-            ref_tokens = set(ref.lower().split())
-            if not pred_tokens or not ref_tokens:
-                precisions.append(0.0)
-                recalls.append(0.0)
-                continue
-            common = pred_tokens & ref_tokens
-            p = len(common) / len(pred_tokens)
-            r = len(common) / len(ref_tokens)
-            precisions.append(p)
-            recalls.append(r)
-
-        f1_scores = 2 * np.array(precisions) * np.array(recalls) / (
-            np.array(precisions) + np.array(recalls) + 1e-8
-        )
+        # Cosine similarity (embeddings are L2-normalized, so dot = cosine)
+        similarities = (pred_emb * ref_emb).sum(axis=1)
 
         return {
-            "bertscore_precision": round(float(np.mean(precisions)), 4),
-            "bertscore_recall": round(float(np.mean(recalls)), 4),
-            "bertscore_f1": round(float(np.mean(f1_scores)), 4),
-            "bertscore_cosine": round(float(np.mean(similarities)), 4),
+            # Backward-compatible keys (labelled honestly in description)
+            "bertscore_precision": float(np.mean(similarities)),  # legacy key
+            "bertscore_recall": float(np.mean(similarities)),     # legacy key
+            "bertscore_f1": float(np.mean(similarities)),         # legacy key
+            # Honest key — what this actually is
+            "semantic_similarity": float(np.mean(similarities)),
+            "model": self.model_name,
+            "n": len(predictions),
         }
