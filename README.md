@@ -114,26 +114,51 @@ docker-compose up --build
 
 ## Test Coverage Summary (2026-07-22)
 
-| # | Project | Tests | Pass | Notes |
-|---|---|---:|---:|---|
-| 03 | multi-model-gateway | 30 | ✅ | Auth dev-bypass via `GATEWAY_AUTH_DISABLED=true` |
-| 04 | guardrails-chat | 67 | ✅ | Auth dev-bypass via `GUARDRAILS_AUTH_DISABLED=true` |
-| 16 | kg-rag-fusion | 98 | ✅ | NER now spaCy zh_core_web_sm |
-| 17 | llm-observability | 89 | ✅ | |
-| 18 | agent-long-term-memory | 77 | ✅ | Mock consolidator → NotImplementedError |
-| 19 | voice-ai-assistant | 82 | ✅ | Mock ASR/TTS → NotImplementedError |
-| 20 | llm-eval-benchmark | 105 | ✅ | All benchmarks mocked, no LLM API required |
-| **Σ** | **7 projects with tests** | **548** | **✅** | |
+| # | Project | Tests | Pass | Skip | Notes |
+|---|---|---:|---:|---:|---|
+| 01 | rag-knowledge-base | 30 | ✅ | | `pydantic-settings`, `loguru`, `python-magic` |
+| 02 | agent-workflow | 33 | ✅ | 4 | SSRF fix verified; `chromadb`, `sympy`, `aiofiles` |
+| 03 | multi-model-gateway | 30 | ✅ | | dev-bypass via `GATEWAY_AUTH_DISABLED=true` |
+| 04 | guardrails-chat | 67 | ✅ | | dev-bypass via `GUARDRAILS_AUTH_DISABLED=true` |
+| 05 | vector-db-manager | 16 | ✅ | | |
+| 06 | lora-finetune | 54 | ✅ | 3 | `SKIP_HEAVY_TESTS=1` (peft/torch imports heavy) |
+| 07 | code-review-agent | 73 | ✅ | | `langgraph` |
+| 09 | multimodal-doc-understanding | 67 | ✅ | 1 | Mock → NotImplementedError |
+| 11 | dify-workflow | 89 | ✅ | | |
+| 12 | prompt-eval-framework | 75 | ✅ | 3 | `SKIP_HF_DOWNLOAD=1` for BERTScore (network-blocked) |
+| 14 | mcp-tool-integration | 92 | ✅ | | |
+| 15 | agent-security-sandbox | 106 | ✅ | | /execute requires Bearer |
+| 16 | kg-rag-fusion | 98 | ✅ | | NER now spaCy zh_core_web_sm |
+| 17 | llm-observability | 89 | ✅ | | |
+| 18 | agent-long-term-memory | 77 | ✅ | | Mock consolidator → NotImplementedError |
+| 19 | voice-ai-assistant | 82 | ✅ | | Mock ASR/TTS → NotImplementedError |
+| 20 | llm-eval-benchmark | 105 | ✅ | | All benchmarks mocked, no LLM API required |
+| **Σ** | **17 active projects** | **1182** | **✅** | **11** | |
 
 > **Methodology**: pytest on a single shared venv at `.ci-cache/venv/`
 > (Python 3.13.14). LLM calls disabled via `ALLOW_MOCK_PROVIDERS=true` etc.
 > Tests run **without** real API keys; coverage of LLM-path code is *not*
 > measured by these numbers (it would require live API + cost budget).
 >
-> **Projects without test suites (2026-07-22)**: `01`, `02`, `05`, `06`,
-> `07`, `09`, `11`, `12`, `14`, `15`. Of these, `01` has the highest
-> priority for adding tests (already-strong project), followed by `02`
-> (post-SSRF fix) and `15` (post-auth fix).
+> **3 archived projects (`08`, `10`, `13`) excluded**: their tests, if any,
+> were deprecated along with the projects (see `archive/README.md`).
+>
+> **Skip semantics**:
+> - `SKIP_HF_DOWNLOAD=1` skips tests that download from huggingface.co
+>   (firewall may block HF Hub). Used by 12.
+> - `SKIP_HEAVY_TESTS=1` skips tests importing peft/torch (~1 GB).
+>   Used by 06.
+> - `ALLOW_MOCK_PROVIDERS=true` etc. enables mock LLM/vision/ASR/TTS
+>   (NOT actually invoking external API).
+>
+> **Running all tests** (after `pip install -r requirements.txt` + the
+> extra deps in `notes` above):
+> ```bash
+> export PYTHONPATH=.
+> for p in 01-rag-knowledge-base 02-agent-workflow ...; do
+>   (cd "$p" && pytest tests/ -q --tb=line) || break
+> done
+> ```
 
 ## Tech Stack (common)
 

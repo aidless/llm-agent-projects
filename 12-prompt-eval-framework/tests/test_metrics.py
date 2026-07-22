@@ -88,12 +88,30 @@ class TestROUGE:
 
 # ---- BERTScore 测试 ----
 
+# ⚠️ 2026-07-22: sentence-transformers 需要联网下载 all-MiniLM-L6-v2 (~80 MB)。
+# 默认情况下需要主动网络（huggingface.co）；离线环境设 SKIP_HF_DOWNLOAD=1
+# 跳过；或设 HF_HUB_OFFLINE=1 让 sentence-transformers 走本地 cache。
+import os as _os
+_HF_AVAILABLE = (
+    _os.getenv("HF_HUB_OFFLINE") == "1"
+    or _os.getenv("SKIP_HF_DOWNLOAD") != "1"  # 默认行为：跑；显式 SKIP=1 才跳过
+    and _os.path.isdir(_os.path.expanduser("~/.cache/huggingface/hub"))
+) and _os.getenv("SKIP_HF_DOWNLOAD") != "1"
+requires_hf_model = pytest.mark.skipif(
+    not _HF_AVAILABLE,
+    reason="BERTScore requires network for huggingface.co download. "
+    "Set SKIP_HF_DOWNLOAD=1 to skip; pre-download with HF_HUB_OFFLINE=1.",
+)
+
+
 class TestBERTScore:
+    @requires_hf_model
     def test_bertscore_compute_returns_dict(self):
         metric = BERTScoreMetric()
         result = metric.compute(PREDICTIONS, REFERENCES)
         assert isinstance(result, dict)
 
+    @requires_hf_model
     def test_bertscore_has_all_metrics(self):
         metric = BERTScoreMetric()
         result = metric.compute(PREDICTIONS, REFERENCES)
@@ -102,12 +120,14 @@ class TestBERTScore:
         assert "bertscore_f1" in result
         assert "bertscore_cosine" in result
 
+    @requires_hf_model
     def test_bertscore_perfect_match_high_score(self):
         metric = BERTScoreMetric()
         result = metric.compute(["the cat sat on the mat"], ["the cat sat on the mat"])
         assert result["bertscore_f1"] > 0.9
 
     def test_bertscore_length_mismatch_raises(self):
+        """不需要模型，只测参数校验。"""
         metric = BERTScoreMetric()
         with pytest.raises(ValueError, match="长度"):
             metric.compute(["a"], ["b", "c"])
