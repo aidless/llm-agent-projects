@@ -120,37 +120,30 @@ jobs:
           set +e
           pytest tests/ -q --tb=short --continue-on-collection-errors --timeout=30
           echo "$?" > "$GITHUB_WORKSPACE/results/${{ matrix.project }}.txt"
-
-  collect:
-    name: Collect results
-    needs: [lint, test]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
+      # Each matrix leg publishes its own result; the gate job pulls them all back.
+      - name: Publish the result
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          pattern: sub-project-*
-          merge-multiple: true
-          path: results
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: sub-project-results
-          path: results/*.txt
+          name: sub-project-${{ matrix.project }}
+          path: results/${{ matrix.project }}.txt
           if-no-files-found: error
 
   gate:
     name: Compare against the recorded baseline
-    needs: [lint, collect]
+    needs: [lint, test]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      # download-artifact clears its target directory first, which would delete the
+      # baseline that came from the checkout. Download beside it instead, then read
+      # the baseline from the repository and the results from reports/.
       - uses: actions/download-artifact@v4
         with:
-          name: sub-project-results
-          path: results
+          pattern: sub-project-*
+          merge-multiple: true
+          path: reports
       - name: Diff against the baseline
         shell: bash
         run: |
@@ -163,7 +156,7 @@ jobs:
             [ -z "$project" ] && continue
             # Skip the comment lines the baseline file is allowed to carry.
             case "$project" in \#*) continue ;; esac
-            file="results/$project.txt"
+            file="reports/$project.txt"
             if [ ! -f "$file" ]; then
               echo "::error::$project produced no result file"
               failed=1
