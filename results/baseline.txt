@@ -1,0 +1,26 @@
+# Sub-projects whose test suite does not pass today. The gate in ci.yml only fails
+# for a sub-project that is missing here or that regressed from green, so a fix for
+# any of these shows up as its line flipping to "green".
+#
+# Recorded from a local run on Python 3.12 with no per-project dependencies
+# installed, which over-reports failures: several of these are collection errors from
+# a missing package rather than a real assertion failure. The lists below are
+# therefore the pessimistic reading. Move a line to "green" once a run with
+# dependencies installed actually passes.
+01-rag-knowledge-base failing
+02-agent-workflow failing
+03-multi-model-gateway failing
+04-guardrails-chat failing
+05-vector-db-manager failing
+06-lora-finetune failing
+07-code-review-agent failing
+09-multimodal-doc-understanding green
+11-dify-workflow failing
+12-prompt-eval-framework failing
+14-mcp-tool-integration failing
+15-agent-security-sandbox failing
+16-kg-rag-fusion failing
+17-llm-observability failing
+18-agent-long-term-memory green
+19-voice-ai-assistant failing
+20-llm-eval-benchmark failing
