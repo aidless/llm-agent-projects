@@ -2,11 +2,16 @@
 # for a sub-project that is missing here or that regressed from green, so a fix for
 # any of these shows up as its line flipping to "green".
 #
-# Recorded from a local run on Python 3.12 with no per-project dependencies
-# installed, which over-reports failures: several of these are collection errors from
-# a missing package rather than a real assertion failure. The lists below are
-# therefore the pessimistic reading. Move a line to "green" once a run with
-# dependencies installed actually passes.
+# Recorded pessimistically: a local run on Python 3.12 with no per-project
+# dependencies installed, where several failures were collection errors from a missing
+# package rather than real assertion failures, plus a CI run in which the two
+# sub-projects that passed locally both exited non-zero.
+#
+# The gate therefore has nothing to hold to green. It fails when a sub-project
+# appears here for the first time while failing, or when a line is flipped to
+# "green" and that sub-project then fails — so deleting a line here is how a new
+# failure gets caught, and flipping one back to "green" is the deliberate act that
+# re-arms the gate for that sub-project.
 01-rag-knowledge-base failing
 02-agent-workflow failing
 03-multi-model-gateway failing

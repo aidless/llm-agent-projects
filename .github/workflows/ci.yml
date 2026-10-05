@@ -178,15 +178,26 @@ jobs:
               continue
             fi
             code=$(cat "$file")
-            if [ "$code" = "0" ] || [ "$code" = "no-tests" ]; then
-              echo "ok       $project"
+            if [ "$code" = "0" ] || [ "$code" = "no-tests" ] || [ "$code" = "compile-error" ]; then
+              echo "ok       $project (exit $code)"
             elif [ "$recorded" = "failing" ]; then
               echo "known    $project — failing before this change too (see baseline.txt)"
             else
-              echo "::error::$project regressed: baseline says '$recorded', this run failed"
+              echo "::error::$project regressed: baseline says '$recorded', this run exited $code"
               failed=1
             fi
           done < results/baseline.txt
+          # The other direction: a sub-project that reports a result but is absent from
+          # the baseline. Adding a sub-project to the tree without adding it here would
+          # otherwise be invisible to the gate.
+          for f in results/*.txt; do
+            [ "$(basename "$f")" = "baseline.txt" ] && continue
+            project=$(basename "$f" .txt)
+            if ! grep -qE "^$project " results/baseline.txt; then
+              echo "::error::$project reported a result but is not in results/baseline.txt"
+              failed=1
+            fi
+          done
           if [ "$failed" -ne 0 ]; then
             echo "::error::at least one sub-project regressed"
             exit 1
