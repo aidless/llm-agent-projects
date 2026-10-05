@@ -101,7 +101,18 @@ jobs:
           # Minimal import surface. torch and chromadb are gigabytes and no test here
           # needs them. pytest-timeout is not optional: without it pytest exits 4 on the
           # unrecognised --timeout flag.
-          pip install -q fastapi uvicorn pydantic httpx pytest pytest-asyncio \
+          #
+          # pytest-asyncio is deliberately absent from this list. Several sub-projects
+          # pin pytest itself — 18-agent-long-term-memory pins pytest==7.4.3 — and an
+          # unpinned pytest-asyncio then resolves to 1.4.0, which requires pytest>=8.4.
+          # The result was not a failing test but a failing import:
+          #
+          #   ImportError: cannot import name 'FixtureDef' from 'pytest'
+          #
+          # so pytest could not start and the leg's exit code disagreed with a baseline
+          # that records it as green. It is installed after the project's own pins, at a
+          # version that matches whatever pytest ended up being.
+          pip install -q fastapi uvicorn pydantic httpx pytest \
                       pytest-timeout numpy scikit-learn scipy rouge-score nltk \
                       python-multipart pillow requests
           if [ -f "${{ matrix.project }}/requirements.txt" ]; then
@@ -113,6 +124,14 @@ jobs:
                 || echo "::warning::some requirements for ${{ matrix.project }} did not install"
             fi
           fi
+          pv=$(python -c "import pytest; print(pytest.__version__)" 2>/dev/null || echo "")
+          echo "pytest is $pv"
+          case "$pv" in
+            7.*) pip install -q "pytest-asyncio<1.0" ;;
+            *)   pip install -q "pytest-asyncio" ;;
+          esac
+          python -c "import pytest_asyncio as a; print('pytest-asyncio', a.__version__)" 2>/dev/null \
+            || echo "::warning::pytest-asyncio is not importable for this sub-project"
           exit 0
       - name: Run this sub-project's tests
         id: tests
