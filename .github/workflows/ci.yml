@@ -139,11 +139,25 @@ jobs:
       # download-artifact clears its target directory first, which would delete the
       # baseline that came from the checkout. Download beside it instead, then read
       # the baseline from the repository and the results from reports/.
+      # Download each artifact into its own directory rather than merging, so a
+      # missing one is visible as a missing directory instead of silently dropping
+      # a file out of a merged tree.
       - uses: actions/download-artifact@v4
         with:
           pattern: sub-project-*
-          merge-multiple: true
           path: reports
+      - name: Flatten
+        shell: bash
+        run: |
+          shopt -s nullglob
+          moved=0
+          for f in reports/*/*.txt; do
+            mv "$f" "reports/$(basename "$f")"
+            moved=$((moved + 1))
+          done
+          rmdir reports/*/ 2>/dev/null || true
+          echo "flattened $moved result files"
+          ls -la reports/
       - name: Diff against the baseline
         shell: bash
         run: |
