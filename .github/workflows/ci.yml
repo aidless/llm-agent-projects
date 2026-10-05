@@ -110,7 +110,11 @@ jobs:
             echo "::endgroup::"
           done
           echo "--- collected ---"
+          shopt -s nullglob
           for f in reports/*.txt; do echo "$(basename "$f" .txt): $(cat "$f")"; done
+          # Explicit success: the sub-project results are the signal, not this
+          # step's exit code. An unmatched glob would otherwise leave it non-zero.
+          exit 0
 
       # Hand the per-project results to the gate through the same checkout the gate
       # reads its baseline from, rather than through artifacts: merge-multiple makes a
@@ -138,6 +142,7 @@ jobs:
             exit 1
           fi
           echo "--- results collected ---"
+          shopt -s nullglob
           for f in results/*.txt; do echo "$(basename "$f" .txt): $(cat "$f")"; done
           echo "--- baseline says ---"
           grep -v '^#' results/baseline.txt
