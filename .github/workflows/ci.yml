@@ -36,6 +36,9 @@ jobs:
       - name: Compile
         shell: bash
         run: |
+          # -e arrives from GitHub's `bash --noprofile --norc -eo pipefail`; this
+          # loop collects every failure instead of stopping at the first.
+          set +e
           set -uo pipefail
           failed=""
           for proj in 01-rag-knowledge-base 02-agent-workflow 03-multi-model-gateway \
@@ -71,6 +74,11 @@ jobs:
       - name: Install and test each sub-project
         shell: bash
         run: |
+          # GitHub runs `shell: bash` as `bash --noprofile --norc -eo pipefail`, so
+          # -e is already on before this line and `set -uo pipefail` cannot turn it
+          # off — which is why one failing `pip install` aborted the whole step and
+          # left reports/ incomplete. -e has to be disabled explicitly.
+          set +e
           set -uo pipefail
           mkdir -p reports
           for proj in 01-rag-knowledge-base 02-agent-workflow 03-multi-model-gateway \
@@ -82,7 +90,7 @@ jobs:
                      18-agent-long-term-memory 19-voice-ai-assistant \
                      20-llm-eval-benchmark; do
             echo "::group::$proj"
-            python -m pip install -q --upgrade pip
+            python -m pip install -q --upgrade pip || echo "::warning::pip upgrade failed"
             # Minimal import surface. torch and chromadb are gigabytes and no test
             # here needs them.
             # pytest-timeout is not optional: without it pytest exits 4 on the
@@ -90,11 +98,17 @@ jobs:
             # workflow was doing on every sub-project and never said.
             pip install -q fastapi uvicorn pydantic httpx pytest pytest-asyncio \
                         pytest-timeout numpy scikit-learn scipy rouge-score nltk \
-                        python-multipart
+                        python-multipart || echo "::warning::base install failed"
             if [ -f "$proj/requirements.txt" ]; then
-              grep -iE "^[a-zA-Z]" "$proj/requirements.txt" | \
+              # head closes the pipe early, so pipefail would make the whole
+              # pipeline look like a failure even on success.
+              reqs=$(grep -iE "^[a-zA-Z]" "$proj/requirements.txt" | \
                 grep -viE "torch|chromadb|sentence-transformers|spacy|peft|trl|transformers|bitsandbytes|accelerate|restrictedpython|psutil" | \
-                head -20 | xargs -r -I{} pip install -q {} || true
+                head -20 || true)
+              if [ -n "$reqs" ]; then
+                echo "$reqs" | xargs -r -I{} pip install -q {} \
+                  || echo "::warning::some of $proj's requirements did not install"
+              fi
             fi
             export ALLOW_MOCK_PROVIDERS=true
             export SANDBOX_AUTH_DISABLED=true
