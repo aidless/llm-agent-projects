@@ -1,18 +1,20 @@
 # CI for llm-agent-projects
 #
-# Two notes on what this file is, because both cost time otherwise.
+# The history of this file is worth two paragraphs, because both cost a lot of time.
 #
-# 1. The first draft of this workflow was rejected by GitHub before it ran a single
-#    step: `run: echo "Project ... status: ${{ job.status }}"` is a plain scalar whose
-#    value contains ": ", so YAML reads it as a mapping. The run showed as failed with
-#    zero jobs, which looks exactly like a broken test.
+# 1. The first draft was rejected by GitHub before it ran a single step:
+#    `run: echo "Project ... status: ${{ job.status }}"` is a plain scalar whose value
+#    contains ": ", so YAML reads it as a mapping. The run showed as failed with zero
+#    jobs, which reads exactly like a broken test suite. It also swallowed every failure
+#    with `|| echo "::warning::..."`, so it could not have failed on its own terms.
 #
-# 2. `compileall || echo warning` and `pytest || echo warning` made the gate
-#    unpassable in both directions — any broken sub-project still gave a green badge.
-#    Thirteen of the seventeen sub-projects do have failing tests today, so the gate
-#    compares each one against results/baseline.txt instead: a sub-project that is new
-#    and failing, or that regressed from green to red, fails the build. Changing the
-#    baseline is a deliberate act and shows up in the diff.
+# 2. The second draft compared all seventeen sub-projects in one job. Seventeen of them
+#    do have failing tests today, so the gate runs against results/baseline.txt rather
+#    than failing on the first red one — but a single job reports only "the gate failed",
+#    and the GitHub job log cannot be read without authentication, so there was no way
+#    to learn *which* sub-project disagreed with the baseline. That is why this is a
+#    matrix again: each leg's name carries its project, so a failing leg is identifiable
+#    from the API alone.
 name: CI
 
 on:
@@ -36,8 +38,8 @@ jobs:
       - name: Compile
         shell: bash
         run: |
-          # -e arrives from GitHub's `bash --noprofile --norc -eo pipefail`; this
-          # loop collects every failure instead of stopping at the first.
+          # -e arrives from GitHub's `bash --noprofile --norc -eo pipefail`; this loop
+          # collects every failure instead of stopping at the first.
           set +e
           set -uo pipefail
           failed=""
@@ -61,146 +63,113 @@ jobs:
             exit 1
           fi
 
-  test:
-    name: Run every sub-project
+  verify:
+    name: ${{ matrix.project }}
     runs-on: ubuntu-latest
-    # Seventeen projects, each installing its own dependencies, in sequence.
-    timeout-minutes: 60
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - 01-rag-knowledge-base
+          - 02-agent-workflow
+          - 03-multi-model-gateway
+          - 04-guardrails-chat
+          - 05-vector-db-manager
+          - 06-lora-finetune
+          - 07-code-review-agent
+          - 09-multimodal-doc-understanding
+          - 11-dify-workflow
+          - 12-prompt-eval-framework
+          - 14-mcp-tool-integration
+          - 15-agent-security-sandbox
+          - 16-kg-rag-fusion
+          - 17-llm-observability
+          - 18-agent-long-term-memory
+          - 19-voice-ai-assistant
+          - 20-llm-eval-benchmark
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Install and test each sub-project
+      - name: Install dependencies
         shell: bash
         run: |
-          # GitHub runs `shell: bash` as `bash --noprofile --norc -eo pipefail`, so
-          # -e is already on before this line and `set -uo pipefail` cannot turn it
-          # off — which is why one failing `pip install` aborted the whole step and
-          # left reports/ incomplete. -e has to be disabled explicitly.
+          set +e
+          python -m pip install --upgrade pip
+          # Minimal import surface. torch and chromadb are gigabytes and no test here
+          # needs them. pytest-timeout is not optional: without it pytest exits 4 on the
+          # unrecognised --timeout flag.
+          pip install -q fastapi uvicorn pydantic httpx pytest pytest-asyncio \
+                      pytest-timeout numpy scikit-learn scipy rouge-score nltk \
+                      python-multipart pillow requests
+          if [ -f "${{ matrix.project }}/requirements.txt" ]; then
+            reqs=$(grep -iE "^[a-zA-Z]" "${{ matrix.project }}/requirements.txt" | \
+              grep -viE "torch|chromadb|sentence-transformers|spacy|peft|trl|transformers|bitsandbytes|accelerate|restrictedpython|psutil" | \
+              head -20 || true)
+            if [ -n "$reqs" ]; then
+              echo "$reqs" | xargs -r -I{} pip install -q {} \
+                || echo "::warning::some requirements for ${{ matrix.project }} did not install"
+            fi
+          fi
+          exit 0
+      - name: Run this sub-project's tests
+        id: tests
+        working-directory: ./${{ matrix.project }}
+        shell: bash
+        run: |
+          # GitHub runs `shell: bash` as `bash --noprofile --norc -eo pipefail`, so -e is
+          # already on before this line; a failing pip install or a single red test would
+          # abort the step. It has to be switched off explicitly.
           set +e
           set -uo pipefail
-          mkdir -p reports
-          for proj in 01-rag-knowledge-base 02-agent-workflow 03-multi-model-gateway \
-                     04-guardrails-chat 05-vector-db-manager 06-lora-finetune \
-                     07-code-review-agent 09-multimodal-doc-understanding \
-                     11-dify-workflow 12-prompt-eval-framework \
-                     14-mcp-tool-integration 15-agent-security-sandbox \
-                     16-kg-rag-fusion 17-llm-observability \
-                     18-agent-long-term-memory 19-voice-ai-assistant \
-                     20-llm-eval-benchmark; do
-            echo "::group::$proj"
-            python -m pip install -q --upgrade pip || echo "::warning::pip upgrade failed"
-            # Minimal import surface. torch and chromadb are gigabytes and no test
-            # here needs them.
-            # pytest-timeout is not optional: without it pytest exits 4 on the
-            # unrecognised --timeout flag, which is what the first draft of this
-            # workflow was doing on every sub-project and never said.
-            pip install -q fastapi uvicorn pydantic httpx pytest pytest-asyncio \
-                        pytest-timeout numpy scikit-learn scipy rouge-score nltk \
-                        python-multipart pillow requests \
-              || echo "::warning::base install failed"
-            if [ -f "$proj/requirements.txt" ]; then
-              # head closes the pipe early, so pipefail would make the whole
-              # pipeline look like a failure even on success.
-              reqs=$(grep -iE "^[a-zA-Z]" "$proj/requirements.txt" | \
-                grep -viE "torch|chromadb|sentence-transformers|spacy|peft|trl|transformers|bitsandbytes|accelerate|restrictedpython|psutil" | \
-                head -20 || true)
-              if [ -n "$reqs" ]; then
-                echo "$reqs" | xargs -r -I{} pip install -q {} \
-                  || echo "::warning::some of $proj's requirements did not install"
-              fi
-            fi
-            export ALLOW_MOCK_PROVIDERS=true
-            export SANDBOX_AUTH_DISABLED=true
-            export GATEWAY_AUTH_DISABLED=true
-            export GUARDRAILS_AUTH_DISABLED=true
-            if ! python -m compileall -q "$proj"; then
-              echo "::warning::compile errors in $proj"
-              echo "compile-error" > "reports/$proj.txt"
-              continue
-            fi
-            if [ ! -d "$proj/tests" ]; then
-              echo "no tests/ directory"
-              echo "no-tests" > "reports/$proj.txt"
-              continue
-            fi
-            ( cd "$proj" && pytest tests/ -q --tb=short \
-                --continue-on-collection-errors --timeout=30 ) > "reports/$proj.log" 2>&1
-            echo "$?" > "reports/$proj.txt"
-            echo "::endgroup::"
-          done
-          echo "--- collected ---"
-          shopt -s nullglob
-          for f in reports/*.txt; do echo "$(basename "$f" .txt): $(cat "$f")"; done
-          # Explicit success: the sub-project results are the signal, not this
-          # step's exit code. An unmatched glob would otherwise leave it non-zero.
+          export ALLOW_MOCK_PROVIDERS=true
+          export SANDBOX_AUTH_DISABLED=true
+          export GATEWAY_AUTH_DISABLED=true
+          export GUARDRAILS_AUTH_DISABLED=true
+          if [ ! -d tests ]; then
+            echo "no tests/ directory"
+            echo "code=no-tests" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pytest tests/ -q --tb=short --continue-on-collection-errors --timeout=30
+          code=$?
+          echo "pytest exited $code"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
           exit 0
-
-      # Hand the per-project results to the gate through the same checkout the gate
-      # reads its baseline from, rather than through artifacts: merge-multiple makes a
-      # file that failed to upload indistinguishable from one that was never expected,
-      # and the job log is not readable without authentication.
-      - name: Stage the results
-        if: always()
+      - name: Compare this sub-project against results/baseline.txt
         shell: bash
         run: |
-          cp reports/*.txt results/ 2>/dev/null || true
-          ls -la results/
-
-  gate:
-    name: Compare against the recorded baseline
-    needs: [lint, test]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Diff against the baseline
-        shell: bash
-        run: |
-          if [ ! -f results/baseline.txt ]; then
-            echo "::error::results/baseline.txt is missing, so nothing can be compared"
+          set +e
+          set -uo pipefail
+          project='${{ matrix.project }}'
+          code='${{ steps.tests.outputs.code }}'
+          baseline=results/baseline.txt
+          if [ ! -f "$baseline" ]; then
+            echo "::error::$baseline is missing, so nothing can be compared"
             exit 1
           fi
-          echo "--- results collected ---"
-          shopt -s nullglob
-          for f in results/*.txt; do echo "$(basename "$f" .txt): $(cat "$f")"; done
-          echo "--- baseline says ---"
-          grep -v '^#' results/baseline.txt
-          failed=0
-          while read -r project recorded; do
-            [ -z "$project" ] && continue
-            # Skip the comment lines the baseline file is allowed to carry.
-            case "$project" in \#*) continue ;; esac
-            file="results/$project.txt"
-            if [ ! -f "$file" ]; then
-              echo "::error::$project produced no result file"
-              failed=1
-              continue
-            fi
-            code=$(cat "$file")
-            if [ "$code" = "0" ] || [ "$code" = "no-tests" ] || [ "$code" = "compile-error" ]; then
-              echo "ok       $project (exit $code)"
-            elif [ "$recorded" = "failing" ]; then
-              echo "known    $project — failing before this change too (see baseline.txt)"
-            else
-              echo "::error::$project regressed: baseline says '$recorded', this run exited $code"
-              failed=1
-            fi
-          done < results/baseline.txt
-          # The other direction: a sub-project that reports a result but is absent from
-          # the baseline. Adding a sub-project to the tree without adding it here would
-          # otherwise be invisible to the gate.
-          for f in results/*.txt; do
-            [ "$(basename "$f")" = "baseline.txt" ] && continue
-            project=$(basename "$f" .txt)
-            if ! grep -qE "^$project " results/baseline.txt; then
-              echo "::error::$project reported a result but is not in results/baseline.txt"
-              failed=1
-            fi
-          done
-          if [ "$failed" -ne 0 ]; then
-            echo "::error::at least one sub-project regressed"
+          if ! grep -qE "^$project " "$baseline"; then
+            echo "::error::$project is not listed in results/baseline.txt"
+            echo "::error::add a line '<project> green|failing' to say what is expected"
             exit 1
           fi
-          echo "no sub-project regressed"
+          recorded=$(grep -E "^$project " "$baseline" | awk '{print $2}')
+          echo "recorded: $recorded, this run: $code"
+          case "$code" in
+            0|no-tests)
+              # Passing is always fine, whether or not the baseline expected it. A
+              # sub-project that has been fixed shows up here, and flipping its line to
+              # "green" is what re-arms the gate for it.
+              echo "ok: $project passes"
+              ;;
+            *)
+              if [ "$recorded" = "failing" ]; then
+                echo "::warning::$project is still failing, as recorded in the baseline"
+              else
+                echo "::error::$project regressed: the baseline records '$recorded'"
+                exit 1
+              fi
+              ;;
+          esac
