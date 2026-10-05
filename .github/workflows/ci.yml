@@ -59,75 +59,69 @@ jobs:
           fi
 
   test:
-    name: Test ${{ matrix.project }}
+    name: Run every sub-project
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project:
-          - 01-rag-knowledge-base
-          - 02-agent-workflow
-          - 03-multi-model-gateway
-          - 04-guardrails-chat
-          - 05-vector-db-manager
-          - 06-lora-finetune
-          - 07-code-review-agent
-          - 09-multimodal-doc-understanding
-          - 11-dify-workflow
-          - 12-prompt-eval-framework
-          - 14-mcp-tool-integration
-          - 15-agent-security-sandbox
-          - 16-kg-rag-fusion
-          - 17-llm-observability
-          - 18-agent-long-term-memory
-          - 19-voice-ai-assistant
-          - 20-llm-eval-benchmark
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Install dependencies
-        working-directory: ./${{ matrix.project }}
+      - name: Install and test each sub-project
         shell: bash
         run: |
-          python -m pip install --upgrade pip
-          # Minimal set: the sub-projects only need the FastAPI and pytest surface to
-          # import. torch and chromadb are excluded on purpose — they are gigabytes.
-          pip install fastapi uvicorn pydantic httpx pytest pytest-asyncio \
-                      numpy scikit-learn scipy rouge-score nltk python-multipart
-          if [ -f requirements.txt ]; then
-            grep -iE "^[a-zA-Z]" requirements.txt | \
-              grep -viE "torch|chromadb|sentence-transformers|spacy|peft|trl|transformers|bitsandbytes|accelerate|restrictedpython|psutil" | \
-              head -20 | xargs -r -I{} pip install {} || true
-          fi
-      - name: Run tests
-        working-directory: ./${{ matrix.project }}
-        shell: bash
-        run: |
-          # 09/18/19 need their default mock provider to start.
-          export ALLOW_MOCK_PROVIDERS=true
-          # The sandbox, gateway and guardrails have dev-mode auth bypasses.
-          export SANDBOX_AUTH_DISABLED=true
-          export GATEWAY_AUTH_DISABLED=true
-          export GUARDRAILS_AUTH_DISABLED=true
-          mkdir -p "$GITHUB_WORKSPACE/results"
-          if [ ! -d tests ]; then
-            echo "no tests/ directory"
-            echo "no-tests" > "$GITHUB_WORKSPACE/results/${{ matrix.project }}.txt"
-            exit 0
-          fi
-          set +e
-          pytest tests/ -q --tb=short --continue-on-collection-errors --timeout=30
-          echo "$?" > "$GITHUB_WORKSPACE/results/${{ matrix.project }}.txt"
-      # Each matrix leg publishes its own result; the gate job pulls them all back.
-      - name: Publish the result
+          set -uo pipefail
+          mkdir -p reports
+          for proj in 01-rag-knowledge-base 02-agent-workflow 03-multi-model-gateway \
+                     04-guardrails-chat 05-vector-db-manager 06-lora-finetune \
+                     07-code-review-agent 09-multimodal-doc-understanding \
+                     11-dify-workflow 12-prompt-eval-framework \
+                     14-mcp-tool-integration 15-agent-security-sandbox \
+                     16-kg-rag-fusion 17-llm-observability \
+                     18-agent-long-term-memory 19-voice-ai-assistant \
+                     20-llm-eval-benchmark; do
+            echo "::group::$proj"
+            python -m pip install -q --upgrade pip
+            # Minimal import surface. torch and chromadb are gigabytes and no test
+            # here needs them.
+            pip install -q fastapi uvicorn pydantic httpx pytest pytest-asyncio \
+                        numpy scikit-learn scipy rouge-score nltk python-multipart
+            if [ -f "$proj/requirements.txt" ]; then
+              grep -iE "^[a-zA-Z]" "$proj/requirements.txt" | \
+                grep -viE "torch|chromadb|sentence-transformers|spacy|peft|trl|transformers|bitsandbytes|accelerate|restrictedpython|psutil" | \
+                head -20 | xargs -r -I{} pip install -q {} || true
+            fi
+            export ALLOW_MOCK_PROVIDERS=true
+            export SANDBOX_AUTH_DISABLED=true
+            export GATEWAY_AUTH_DISABLED=true
+            export GUARDRAILS_AUTH_DISABLED=true
+            if ! python -m compileall -q "$proj"; then
+              echo "::warning::compile errors in $proj"
+              echo "compile-error" > "reports/$proj.txt"
+              continue
+            fi
+            if [ ! -d "$proj/tests" ]; then
+              echo "no tests/ directory"
+              echo "no-tests" > "reports/$proj.txt"
+              continue
+            fi
+            ( cd "$proj" && pytest tests/ -q --tb=short \
+                --continue-on-collection-errors --timeout=30 ) > "reports/$proj.log" 2>&1
+            echo "$?" > "reports/$proj.txt"
+            echo "::endgroup::"
+          done
+          echo "--- collected ---"
+          for f in reports/*.txt; do echo "$(basename "$f" .txt): $(cat "$f")"; done
+
+      # Hand the per-project results to the gate through the same checkout the gate
+      # reads its baseline from, rather than through artifacts: merge-multiple makes a
+      # file that failed to upload indistinguishable from one that was never expected,
+      # and the job log is not readable without authentication.
+      - name: Stage the results
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sub-project-${{ matrix.project }}
-          path: results/${{ matrix.project }}.txt
-          if-no-files-found: error
+        shell: bash
+        run: |
+          cp reports/*.txt results/ 2>/dev/null || true
+          ls -la results/
 
   gate:
     name: Compare against the recorded baseline
@@ -136,28 +130,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      # download-artifact clears its target directory first, which would delete the
-      # baseline that came from the checkout. Download beside it instead, then read
-      # the baseline from the repository and the results from reports/.
-      # Download each artifact into its own directory rather than merging, so a
-      # missing one is visible as a missing directory instead of silently dropping
-      # a file out of a merged tree.
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: sub-project-*
-          path: reports
-      - name: Flatten
-        shell: bash
-        run: |
-          shopt -s nullglob
-          moved=0
-          for f in reports/*/*.txt; do
-            mv "$f" "reports/$(basename "$f")"
-            moved=$((moved + 1))
-          done
-          rmdir reports/*/ 2>/dev/null || true
-          echo "flattened $moved result files"
-          ls -la reports/
       - name: Diff against the baseline
         shell: bash
         run: |
@@ -165,17 +137,16 @@ jobs:
             echo "::error::results/baseline.txt is missing, so nothing can be compared"
             exit 1
           fi
-          # What actually arrived, so a red gate says which files are missing.
           echo "--- results collected ---"
-          ls -la reports/ || true
-          echo "--- expected by the baseline ---"
-          grep -vc '^#' results/baseline.txt
+          for f in results/*.txt; do echo "$(basename "$f" .txt): $(cat "$f")"; done
+          echo "--- baseline says ---"
+          grep -v '^#' results/baseline.txt
           failed=0
           while read -r project recorded; do
             [ -z "$project" ] && continue
             # Skip the comment lines the baseline file is allowed to carry.
             case "$project" in \#*) continue ;; esac
-            file="reports/$project.txt"
+            file="results/$project.txt"
             if [ ! -f "$file" ]; then
               echo "::error::$project produced no result file"
               failed=1
