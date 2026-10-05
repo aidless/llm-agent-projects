@@ -61,6 +61,8 @@ jobs:
   test:
     name: Run every sub-project
     runs-on: ubuntu-latest
+    # Seventeen projects, each installing its own dependencies, in sequence.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -83,8 +85,12 @@ jobs:
             python -m pip install -q --upgrade pip
             # Minimal import surface. torch and chromadb are gigabytes and no test
             # here needs them.
+            # pytest-timeout is not optional: without it pytest exits 4 on the
+            # unrecognised --timeout flag, which is what the first draft of this
+            # workflow was doing on every sub-project and never said.
             pip install -q fastapi uvicorn pydantic httpx pytest pytest-asyncio \
-                        numpy scikit-learn scipy rouge-score nltk python-multipart
+                        pytest-timeout numpy scikit-learn scipy rouge-score nltk \
+                        python-multipart
             if [ -f "$proj/requirements.txt" ]; then
               grep -iE "^[a-zA-Z]" "$proj/requirements.txt" | \
                 grep -viE "torch|chromadb|sentence-transformers|spacy|peft|trl|transformers|bitsandbytes|accelerate|restrictedpython|psutil" | \
