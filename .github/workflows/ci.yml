@@ -98,7 +98,8 @@ jobs:
             # workflow was doing on every sub-project and never said.
             pip install -q fastapi uvicorn pydantic httpx pytest pytest-asyncio \
                         pytest-timeout numpy scikit-learn scipy rouge-score nltk \
-                        python-multipart || echo "::warning::base install failed"
+                        python-multipart pillow requests \
+              || echo "::warning::base install failed"
             if [ -f "$proj/requirements.txt" ]; then
               # head closes the pipe early, so pipefail would make the whole
               # pipeline look like a failure even on success.
