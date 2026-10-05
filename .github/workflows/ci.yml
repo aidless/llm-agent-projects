@@ -151,6 +151,11 @@ jobs:
             echo "::error::results/baseline.txt is missing, so nothing can be compared"
             exit 1
           fi
+          # What actually arrived, so a red gate says which files are missing.
+          echo "--- results collected ---"
+          ls -la reports/ || true
+          echo "--- expected by the baseline ---"
+          grep -vc '^#' results/baseline.txt
           failed=0
           while read -r project recorded; do
             [ -z "$project" ] && continue
