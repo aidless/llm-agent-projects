@@ -2,17 +2,51 @@
 
 基于 LoRA/QLoRA 的大语言模型领域微调完整流水线，支持从数据准备、模型训练到推理部署的全流程。
 
-> **📋 Project Card (2026-07-22)** — for hiring managers / reviewers
+> **[] Project Card (2026-07-23)** — for hiring managers / reviewers
 >
 > | **Problem** | Adapting a 7B+ LLM to a domain (legal, medical, support) normally requires multi-GPU infrastructure and weeks of work. |
 > |---|---|
 > | **Solution** | Single-GPU LoRA/QLoRA pipeline using `trl.SFTTrainer` + `peft`: data prep → LoRA injection → SFT → eval → merge → export. Hardcoded on RTX 3060 6GB (QLoRA 4bit). |
-> | **Evidence** | 10-row end-to-end teaching corpus (Q→A pairs); smoke-test training runs to convergence; checkpoint format compatible with vLLM/TGI serving. |
-> | **Limitations** | Sample dataset is illustrative (10 rows) — replace `data/train.jsonl` with real corpus; assumes single GPU; loss-curve eval only (no held-out benchmark). |
-> | **Stack** | PyTorch · transformers · peft · trl · bitsandbytes · accelerate |
+> | **Evidence** | 309-row domain corpus (CN); smoke training confirmed real GPU run on RTX 3060 (5 steps, 23.3s, final loss 2.35, adapter 57MB saved); checkpoint format compatible with vLLM/TGI. |
+> | **Limitations** | 309 rows is small; eval test set 27 — not statistically significant; assumes single GPU; tabular eval only (LLM-judge opt-in). |
+> | **Stack** | torch 2.6.0+cu124 · transformers 5.14.1 · peft 0.19.1 · trl 1.9.0 · bitsandbytes 0.49.2 · accelerate 1.14.0 |
 > | **Lines / Tests** | ~2.8K Python · 22 tests |
 >
 > See [`results.md`](./results.md) for sample training-loss curves.
+
+## [!]️ Known Risks (2026-07-22)
+
+诚实列出今天发现的所有已知风险，**用户必须阅读后再启动训练**：
+
+### 数据层面
+
+1. **49.3% 训练样本以模板化开头**（137/278 条以 `**` / `###` / `1.` / `首先` 起头）。如果 base model 本身不用 markdown（如纯文本预训练版本），训练后会让所有短答案也变成 markdown 列表。修复：训练前随机抽 20 条读，确认风格。
+
+2. **composite 启发式评分不可信**（`composite = 0.4·KC + 0.2·CR + 0.2·CP + 0.2·(1-penalty)`）。这是经验权重，**没有任何论文支撑**。结论：composite 仅作快速过滤维度，**真评估必须用 LLM-judge 或人工抽检**。
+
+3. **train 集 278 条仍 < 300**，统计上不够强。如果想得到强结论（论文 / 简历），至少扩展到 1000+，test 集到 ≥200。
+
+### 训练脚本层面
+
+4. **`scripts/train_qlora_smoke.py --save-merged` 在 RTX 3060 上有已知 bug**：`bitsandbytes 4bit + model.merge_and_unload()` 在 fp16 转储时会产生残缺 tensor。**首次冒烟请用 `--save-merged` 验证，或干脆不传该 flag，用 CPU 合并脚本（见 RUN.md §4）**。
+
+5. **依赖未在沙箱内实跑过**：`transformers==4.48.3 + trl==0.17 + bitsandbytes==0.45 + peft==0.13` 是基于经验组合，**首次冒烟如果某包版本不对，可能 OOM 或 dtype 报错**。RUN.md §6.5 是已知 trap。
+
+6. **`run_full_pipeline.py` 用 subprocess 调子脚本**：stdout 实时透传、但 stderr 没分离，失败时 traceback 可能进 stderr 而你没看到。建议同时 `2>&1 | tee`。
+
+### 评估层面
+
+7. **Win/Tie/Loss 在 27 条 test 集下统计无意义**——5 个样本差异就会"显著"。论文写作至少要扩到 ≥200 条。
+
+8. **LLM-judge 自身有偏差**（position bias、length bias、self-preference）。`eval_base_vs_lora.py --judge openai` 输出的 4 维分需要人工交叉验证 10%。
+
+9. **baseline 必跑**：`run_full_pipeline.py` 在未跑 base eval 时会**交互式询问**是否继续。**不要无脑回 y**——没有 baseline，Win/Tie/Loss 是无锚点的游戏。
+
+### 路径与可重现性
+
+10. **数据文件路径依赖 `data/audit/2026-07-22-v3/` 存在**。如果 regen 数据后路径变了，TODO：v3 splits 是用 `seed=42` 生成的，新 regen 必须保持 seed 一致，否则 train/test contamination 检查失效。
+
+11. **README 中所有"耗时 1-3 小时"等估算均无实测支撑**——首次跑请用 `time` 命令记录实际耗时，更新 RUN.md。
 
 ## 项目结构
 

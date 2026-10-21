@@ -1,0 +1,37 @@
+name: 06-lora-finetune unit tests
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "06-lora-finetune/scripts/**"
+      - "06-lora-finetune/tests/**"
+      - "06-lora-finetune/.github/workflows/test.yml"
+  pull_request:
+    paths:
+      - "06-lora-finetune/scripts/**"
+      - "06-lora-finetune/tests/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Run CPU-only tests
+        working-directory: 06-lora-finetune
+        run: |
+          pytest tests/test_audit_split.py \
+                 tests/test_eval_scorers.py \
+                 tests/test_pipeline_smoke_cpu.py \
+                 tests/test_llm_judge_mock.py \
+                 -v --tb=short

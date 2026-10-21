@@ -37,15 +37,30 @@ def _warn_if_mock_consolidator():
         logger.warning("=" * 60)
         logger.warning("  ⚠️  CONSOLIDATOR_PROVIDER=keyword (默认)")
         logger.warning("  记忆整合基于关键词重叠 + 截断，不是真 LLM 摘要")
-        logger.warning("  生产部署建议：CONSOLIDATOR_PROVIDER=openai (待实现)")
+        logger.warning("  生产部署建议：CONSOLIDATOR_PROVIDER=openai")
         logger.warning("=" * 60)
+    elif _CONSOLIDATOR_PROVIDER == "openai":
+        logger.info("CONSOLIDATOR_PROVIDER=openai — 使用 LLMConsolidator")
+        if not os.getenv("OPENAI_API_KEY"):
+            logger.warning("OPENAI_API_KEY 未设置，LLM 整合将回退到简单模式")
+
+
+def _build_consolidator():
+    """根据 CONSOLIDATOR_PROVIDER 选择整合器。"""
+    if _CONSOLIDATOR_PROVIDER == "openai":
+        from manager.llm_consolidator import LLMConsolidator
+        return LLMConsolidator()
+    # 默认使用 MockLLMConsolidator
+    from manager.consolidator import MockLLMConsolidator
+    return MockLLMConsolidator()
 
 
 from manager.memory_manager import MemoryManager
 
 
-# 全局记忆管理器
+# 全局记忆管理器 — 使用选定的 consolidator
 manager = MemoryManager()
+manager.consolidator = _build_consolidator()
 
 
 @asynccontextmanager

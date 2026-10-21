@@ -68,23 +68,42 @@ session_manager = None
 def _build_asr():
     """根据 ASR_PROVIDER 选择 ASR 引擎；mock 时必须显式 ALLOW。
 
-    ⚠️ 仓库目前只实现了 MockASR。`whisper` / `azure` / `funasr` 等真实现
-    需要后续实现（见 README "Roadmap"）。
+    支持的 provider：
+    - mock: MockASR（测试用）
+    - whisper: WhisperASR（基于 faster-whisper，需安装依赖）
     """
     if _ASR_PROVIDER == "mock":
         return MockASR(ASRConfig(language="zh"))
+    if _ASR_PROVIDER == "whisper":
+        try:
+            from asr.whisper_asr import WhisperASR
+            return WhisperASR(ASRConfig(language="zh"))
+        except ImportError as e:
+            raise NotImplementedError(
+                f"ASR_PROVIDER=whisper 需要 faster-whisper 依赖: {e}\n"
+                "请运行: pip install faster-whisper"
+            )
     raise NotImplementedError(
         f"ASR_PROVIDER={_ASR_PROVIDER!r} 未实现。"
-        "当前只支持 'mock'（仅测试用）。请实现对应引擎或使用 mock。"
+        "当前支持 'mock'（测试用）和 'whisper'（真实）。"
     )
 
 
 def _build_tts():
     if _TTS_PROVIDER == "mock":
         return MockTTS(TTSConfig())
+    if _TTS_PROVIDER == "edge-tts":
+        try:
+            from tts.edge_tts import EdgeTTS
+            return EdgeTTS(TTSConfig())
+        except ImportError as e:
+            raise NotImplementedError(
+                f"TTS_PROVIDER=edge-tts 需要 edge-tts 依赖: {e}\n"
+                "请运行: pip install edge-tts"
+            )
     raise NotImplementedError(
         f"TTS_PROVIDER={_TTS_PROVIDER!r} 未实现。"
-        "当前只支持 'mock'（仅测试用）。请实现对应引擎或使用 mock。"
+        "当前支持 'mock'（测试用）和 'edge-tts'（真实）。"
     )
 
 

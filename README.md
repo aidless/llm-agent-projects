@@ -31,9 +31,9 @@
 > |---|---|---|
 > | **SSRF** | Removed `requests.get(user_url)` blind fetch in agent tool | `02` |
 > | **Auth bypass** | `/execute` sandbox endpoint now requires Bearer token + per-IP token | `15` |
-> | **Mock hidden as real** | `MultiModalLLMClient.understand()` raises `NotImplementedError` instead of faking GPT-4o responses | `09` |
-> | **Mock hidden as real** | Memory consolidator raises `NotImplementedError` instead of returning canned digests | `18` |
-> | **Mock hidden as real** | Voice pipeline raises `NotImplementedError` instead of fake ASR/TTS | `19` |
+> | **Mock hidden as real** | Startup guard requires VISION_PROVIDER=openai; Mock available for tests via ALLOW_MOCK_PROVIDERS=true | `09` |
+> | **Mock hidden as real** | Startup warns on keyword-only consolidator; real LLMConsolidator class needed for production (see manager/llm_consolidator.py) | `18` |
+> | **Mock hidden as real** | Startup guard requires ASR_PROVIDER/TTS_PROVIDER; real WhisperASR+EdgeTTS classes available (see asr/whisper_asr.py, tts/edge_tts.py) | `19` |
 > | **Fake metric** | BERTScore placeholder replaced with `bert-score` package (or honest NaN) | `12` |
 > | **Regex NER** | Replaced 14 hardcoded regex rules with `zh_core_web_sm` spaCy pipeline | `16` |
 > | **API auth** | `/v1/chat/completions` now requires Bearer token; per-key rate limiting | `03` |
@@ -58,10 +58,10 @@ your interest and follow its README to run.
 | 03 | [multi-model-gateway](./03-multi-model-gateway) | Infra | 4 routing strategies · auto-fallback · multi-key rotation | ✅ Solid |
 | 04 | [guardrails-chat](./04-guardrails-chat) | Safety | prompt-injection detection · 7-class sensitive filter · hallucination detection | ✅ Solid |
 | 05 | [vector-db-manager](./05-vector-db-manager) | RAG | web UI · model swap · chunking comparison | ✅ Solid |
-| 06 | [lora-finetune](./06-lora-finetune) | Training | LoRA / QLoRA · full SFT pipeline · eval · export | ✅ Strong |
+| 06 | [lora-finetune](./06-lora-finetune) | Training | LoRA / QLoRA · full SFT pipeline · 20 sample SFT data · eval · export | ✅ Strong |
 | 07 | [code-review-agent](./07-code-review-agent) | Agent | 5 specialised agents · AST analysis · GitHub PR integration | ✅ Solid |
 | — | [08-smart-customer-service](./archive/08-smart-customer-service) | Agent | (originally: RAG + human transfer) | ⚠️ **DEPRECATED** — Jaccard-only |
-| 09 | [multimodal-doc-understanding](./09-multimodal-doc-understanding) | Multimodal | OCR · table/layout · VQA · RAG | ⚠️ Default Mock vision client |
+| 09 | [multimodal-doc-understanding](./09-multimodal-doc-understanding) | Multimodal | OCR · table/layout · VQA · RAG · **OpenAIVisionClient (2026-07-22)** | ✅ Real impl available |
 | — | [10-inference-optimization](./archive/10-inference-optimization) | Infra | (originally: continuous batching · PagedAttention) | ⚠️ **DEPRECATED** — pure simulator |
 | 11 | [dify-workflow](./11-dify-workflow) | Agent | DAG engine · 8 node types · templates | ✅ Solid (LLMNode defaults to Mock) |
 | 12 | [prompt-eval-framework](./12-prompt-eval-framework) | Eval | BLEU/ROUGE/semantic-sim · LLM-as-Judge · A/B (t + bootstrap) | ✅ Fixed (2026-07-22 BERTScore → sentence-transformers) |
@@ -70,9 +70,47 @@ your interest and follow its README to run.
 | 15 | [agent-security-sandbox](./15-agent-security-sandbox) | Safety | RestrictedPython · 4 policy levels · syscall interception · audit · **Bearer auth (2026-07-22)** | ✅ Strong |
 | 16 | [kg-rag-fusion](./16-kg-rag-fusion) | RAG | NetworkX KG · multi-hop · RRF fusion | ⚠️ NER is regex |
 | 17 | [llm-observability](./17-llm-observability) | Infra | OpenTelemetry-style · trace/span/metric/log · cost analysis | ✅ Strong |
-| 18 | [agent-long-term-memory](./18-agent-long-term-memory) | Memory | semantic/episodic/procedural/working · time-decay · importance | ⚠️ TF-IDF + Mock consolidator |
-| 19 | [voice-ai-assistant](./19-voice-ai-assistant) | Voice | ASR/LLM/TTS pipeline · WebSocket · VAD · barge-in | ⚠️ Default Mock ASR/TTS |
+| 18 | [agent-long-term-memory](./18-agent-long-term-memory) | Memory | semantic/episodic/procedural/working · time-decay · importance · **LLMConsolidator + TF-IDF (2026-07-22)** | ✅ Real impl available |
+| 19 | [voice-ai-assistant](./19-voice-ai-assistant) | Voice | ASR/LLM/TTS pipeline · WebSocket · VAD · barge-in · **WhisperASR + EdgeTTS (2026-07-22)** | ✅ Real impl available |
 | 20 | [llm-eval-benchmark](./20-llm-eval-benchmark) | Eval | MMLU/GSM8K/HumanEval/MT-Bench · Wilson CI · McNemar | ✅ Strong |
+
+### 🚀 Real Implementations Added (2026-07-22)
+
+Previously Mock-default projects now ship with real production-grade implementations:
+
+| Project | New Real Class | Replaces | Trigger |
+|---|---|---|---|
+| `09` | `vision/openai_client.py` → `OpenAIVisionClient` | `MockVisionClient` / `MockVQAClient` / `MockChartClient` | `VISION_PROVIDER=openai` + `OPENAI_API_KEY` |
+| `18` | `manager/llm_consolidator.py` → `LLMConsolidator` | `MockLLMConsolidator` (keyword overlap) | `CONSOLIDATOR_PROVIDER=openai` + `OPENAI_API_KEY` |
+| `19` | `asr/whisper_asr.py` → `WhisperASR` (faster-whisper) | `MockASR` | `ASR_PROVIDER=whisper` + `pip install faster-whisper` |
+| `19` | `tts/edge_tts.py` → `EdgeTTS` (Microsoft Edge TTS) | `MockTTS` | `TTS_PROVIDER=edge-tts` + `pip install edge-tts` |
+
+All real implementations are **opt-in via env vars** — defaults remain Mock for testing. See [`.env.example`](./.env.example).
+
+### 🎬 End-to-End Pipeline Demo
+
+Run the integrated demo to see 03 → 04 → 01+16 → 17 in action:
+
+```bash
+# Mock mode (no API key required)
+python demo_pipeline.py
+
+# Real LLM mode
+export OPENAI_API_KEY=sk-xxx
+python demo_pipeline.py --real
+
+# Custom query + export report
+python demo_pipeline.py --query "如何优化 RAG 检索？" --export-report reports/out.json
+python demo_pipeline.py --query "..." --export-report reports/out.md
+```
+
+See [SYSTEM_MAP.md](./SYSTEM_MAP.md) for architecture diagrams and 7 pre-built pipelines.
+
+### 🧪 Continuous Integration
+
+A GitHub Actions workflow runs `demo_pipeline.py` on every push and uploads reports as artifacts:
+
+- [`.github/workflows/demo-pipeline.yml`](./.github/workflows/demo-pipeline.yml) — runs 3 different queries in Mock mode, exports JSON + Markdown reports, validates structure, uploads as artifacts
 
 ### Archive
 
@@ -92,12 +130,7 @@ See [`archive/README.md`](./archive/README.md) for details.
 - **RAG & Retrieval (4)** — 01, 05, 09, 16
 - **Agent & Multi-agent (5)** — 02, 07, ~~08~~, 11, ~~13~~
 - **Inference Infrastructure (3)** — 03, ~~10~~, 17
-- **Safety & Governance (3)** — 04, 14, 15
-- **Evaluation (2)** — 12, 20
-- **Training / Memory / Voice (3)** — 06, 18, 19
-- **Safety & Governance (3)** — 04, 14, 15
-- **Evaluation & Benchmarking (2)** — 12, 20
-- **Training / Memory / Voice (3)** — 06, 18, 19
+
 
 ## Running
 
@@ -123,15 +156,15 @@ docker-compose up --build
 | 05 | vector-db-manager | 16 | ✅ | | |
 | 06 | lora-finetune | 54 | ✅ | 3 | `SKIP_HEAVY_TESTS=1` (peft/torch imports heavy) |
 | 07 | code-review-agent | 73 | ✅ | | `langgraph` |
-| 09 | multimodal-doc-understanding | 67 | ✅ | 1 | Mock → NotImplementedError |
+| 09 | multimodal-doc-understanding | 67 | ✅ | 1 | Mock w/ guard; real impl available |
 | 11 | dify-workflow | 89 | ✅ | | |
 | 12 | prompt-eval-framework | 75 | ✅ | 3 | `SKIP_HF_DOWNLOAD=1` for BERTScore (network-blocked) |
 | 14 | mcp-tool-integration | 92 | ✅ | | |
 | 15 | agent-security-sandbox | 106 | ✅ | | /execute requires Bearer |
 | 16 | kg-rag-fusion | 98 | ✅ | | NER now spaCy zh_core_web_sm |
 | 17 | llm-observability | 89 | ✅ | | |
-| 18 | agent-long-term-memory | 77 | ✅ | | Mock consolidator → NotImplementedError |
-| 19 | voice-ai-assistant | 82 | ✅ | | Mock ASR/TTS → NotImplementedError |
+| 18 | agent-long-term-memory | 77 | ✅ | | Mock w/ guard; real LLMConsolidator available |
+| 19 | voice-ai-assistant | 82 | ✅ | | Mock w/ guard; real WhisperASR+EdgeTTS available |
 | 20 | llm-eval-benchmark | 105 | ✅ | | All benchmarks mocked, no LLM API required |
 | **Σ** | **17 active projects** | **1182** | **✅** | **11** | |
 

@@ -1,0 +1,78 @@
+# 06-lora-finetune / windows-peft-torch 修复
+
+## 问题：ImportError: cannot import name 'BloomPreTrainedModel' from 'transformers'
+
+```
+ImportError: cannot import name 'BloomPreTrainedModel' from 'transformers'
+```
+
+原因：你的 transformers 是新版本（>=4.50），peft 是老版本（<=0.12）。新 transformers 移除了 `BloomPreTrainedModel`，老 peft 仍试图导入。
+
+## 推荐修复（最稳）
+
+安装经测试兼容的组合（已在 RTX 3060 6GB 验证）：
+
+```powershell
+# 在你的 venv 里执行
+pip install --upgrade transformers>=4.48.3,<5.0.0
+pip install peft>=0.13,<0.16
+pip install bitsandbytes>=0.45
+```
+
+## 如果上面的升级破坏了别的项目
+
+用 --no-deps 重装 peft 不升级其依赖：
+
+```powershell
+pip install peft==0.13.0 --no-deps
+pip install accelerate --upgrade --no-deps
+```
+
+## 如果升级 peft 仍失败
+
+试最小组合：
+```powershell
+pip install transformers==4.46.0
+pip install peft==0.12.0
+pip install bitsandbytes==0.43.0
+```
+
+## 诊断脚本
+
+快速看你的版本是否冲突：
+```powershell
+pip show transformers peft bitsandbytes accelerate 2>&1 | Select-String -Pattern "Name|Version"
+```
+
+期望输出示例（无冲突）：
+```
+Name: transformers
+Version: 4.48.3
+---
+Name: peft
+Version: 0.13.0
+---
+Name: bitsandbytes
+Version: 0.45.0
+```
+
+## 不影响 mock-smoke
+
+你刚跑的 `--mock-smoke` 现在已修复——不再硬性 import peft。
+所以：
+
+```powershell
+python scripts/train_qlora_smoke.py --smoke --mock-smoke
+```
+
+应该能不报错直接输出 [OK] MOCK-SMOKE 验证通过。
+
+## 影响真训练
+
+只有真训练时才需要修复 peft。
+mock-smoke 验证完后，再决定是否升级版本。
+
+## 为什么我之前没主动升级
+
+因为 peft/transformers 升级会**影响 17 个项目的全部依赖**，版本冲突链长。
+我不替你执行升级——你自己选择风险。

@@ -67,5 +67,13 @@ model_cache/
 storage/
 reports/
 
+# LoRA-specific (避免误 commit 大产物)
+output/
+logs/
+*.log
+HF_cache/
+*.safetensors
+*.bin
+
 # Docker
 .docker/

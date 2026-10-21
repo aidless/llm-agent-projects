@@ -1,0 +1,99 @@
+name: Demo Pipeline
+
+# 端到端流水线演示验证
+# 在 push 和 PR 时自动运行 demo_pipeline.py，导出 JSON/MD 报告作为 artifact
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # 允许手动触发
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    name: Run end-to-end pipeline demo
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        query:
+          - "如何使用 RAG 和知识图谱融合提升企业文档搜索？"
+          - "什么是向量数据库？Milvus 和 ChromaDB 怎么选？"
+          - "如何优化 LLM 推理服务的吞吐量？"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install minimal dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # demo_pipeline.py 只需标准库，无外部依赖
+
+      - name: Run pipeline (Mock mode)
+        run: |
+          mkdir -p reports
+          python demo_pipeline.py \
+            --query "${{ matrix.query }}" \
+            --export-report "reports/demo-${{ github.run_number }}-${{ github.job }}.json" \
+            2>&1 | tee reports/demo-${{ github.run_number }}-${{ github.job }}.log
+          # Also export Markdown for human review
+          python demo_pipeline.py \
+            --query "${{ matrix.query }}" \
+            --export-report "reports/demo-${{ github.run_number }}-${{ github.job }}.md" \
+            > /dev/null 2>&1
+
+      - name: Verify report files exist
+        run: |
+          if [ ! -s "reports/demo-${{ github.run_number }}-${{ github.job }}.json" ]; then
+            echo "❌ JSON report missing or empty"
+            exit 1
+          fi
+          if [ ! -s "reports/demo-${{ github.run_number }}-${{ github.job }}.md" ]; then
+            echo "❌ Markdown report missing or empty"
+            exit 1
+          fi
+          echo "✅ Reports generated successfully"
+
+      - name: Validate report content
+        run: |
+          python -c "
+          import json
+          with open('reports/demo-${{ github.run_number }}-${{ github.job }}.json') as f:
+              data = json.load(f)
+          # Required fields
+          assert 'query' in data, 'missing query'
+          assert 'answer' in data or data.get('blocked'), 'missing answer or blocked'
+          assert 'performance' in data, 'missing performance'
+          assert 'stage_durations' in data['performance'], 'missing stage_durations'
+          print('JSON report structure OK')
+          print(f'Query: {data[\"query\"][:50]}')
+          print(f'Answer length: {len(data.get(\"answer\", \"\"))}')
+          print(f'Docs retrieved: {len(data.get(\"retrieved_docs\", []))}')
+          print(f'Stages: {list(data[\"performance\"][\"stage_durations\"].keys())}')
+          "
+
+      - name: Upload report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-reports-${{ github.run_number }}-${{ github.job }}
+          path: reports/
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Post summary
+        if: always()
+        run: |
+          echo "## 🎯 Pipeline Demo Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Query**: \`${{ matrix.query }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Mode**: Mock (no API key required)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See uploaded artifacts for full JSON and Markdown reports." >> $GITHUB_STEP_SUMMARY

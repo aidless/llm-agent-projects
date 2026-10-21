@@ -60,6 +60,20 @@ async def lifespan(app: FastAPI):
         logger.warning("  ⚠️  VISION_PROVIDER=mock — 启动失败已绕过")
         logger.warning("  Vision API 调用将返回固定字符串")
         logger.warning("=" * 60)
+    elif provider == "openai":
+        from vision.openai_client import OpenAIVisionClient
+        client = OpenAIVisionClient.create()
+        if client is None:
+            raise RuntimeError("VISION_PROVIDER=openai 但 OPENAI_API_KEY 未配置")
+        # 注入到全局 vision 引擎
+        from vision.describer import ImageDescriber
+        from vision.vqa import VQAEngine
+        from vision.chart_understanding import ChartUnderstandingEngine
+        app.state.vision_client = client
+        app.state.describer = ImageDescriber(client=client)
+        app.state.vqa_engine = VQAEngine(client=client)
+        app.state.chart_engine = ChartUnderstandingEngine(client=client)
+        logger.info(f"OpenAIVisionClient 已初始化 (model={client._model})")
     else:
         logger.info(f"VISION_PROVIDER={provider}")
     yield
