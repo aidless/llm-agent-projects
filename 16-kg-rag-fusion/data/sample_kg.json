@@ -1,0 +1,257 @@
+{
+  "nodes": {
+    "transformer": {
+      "name": "Transformer",
+      "entity_type": "Technology",
+      "properties": {"year": "2017", "description": "Attention-based neural architecture for sequence transduction"}
+    },
+    "attention_mechanism": {
+      "name": "注意力机制",
+      "entity_type": "Concept",
+      "properties": {"description": "Core mechanism in Transformer allowing focus on relevant input parts"}
+    },
+    "gpt": {
+      "name": "GPT",
+      "entity_type": "Technology",
+      "properties": {"developer": "OpenAI", "type": "Autoregressive Language Model"}
+    },
+    "bert": {
+      "name": "BERT",
+      "entity_type": "Technology",
+      "properties": {"developer": "Google", "type": "Bidirectional Language Model"}
+    },
+    "openai": {
+      "name": "OpenAI",
+      "entity_type": "Organization",
+      "properties": {"founded": "2015", "location": "San Francisco"}
+    },
+    "google": {
+      "name": "Google",
+      "entity_type": "Organization",
+      "properties": {"founded": "1998", "location": "Mountain View"}
+    },
+    "geoffrey_hinton": {
+      "name": "Geoffrey Hinton",
+      "entity_type": "Person",
+      "properties": {"affiliation": "University of Toronto", "award": "Turing Award 2018"}
+    },
+    "yann_lecun": {
+      "name": "Yann LeCun",
+      "entity_type": "Person",
+      "properties": {"affiliation": "New York University / Meta", "award": "Turing Award 2018"}
+    },
+    "yoshua_bengio": {
+      "name": "Yoshua Bengio",
+      "entity_type": "Person",
+      "properties": {"affiliation": "University of Montreal", "award": "Turing Award 2018"}
+    },
+    "deep_learning": {
+      "name": "深度学习",
+      "entity_type": "Technology",
+      "properties": {"description": "Subset of machine learning using neural networks with many layers"}
+    },
+    "machine_learning": {
+      "name": "机器学习",
+      "entity_type": "Technology",
+      "properties": {"description": "Field of study giving computers ability to learn without explicit programming"}
+    },
+    "nlp": {
+      "name": "自然语言处理",
+      "entity_type": "Technology",
+      "properties": {"description": "Processing and understanding human language by computers"}
+    },
+    "computer_vision": {
+      "name": "计算机视觉",
+      "entity_type": "Technology",
+      "properties": {"description": "Enabling computers to interpret visual information from the world"}
+    },
+    "cnn": {
+      "name": "CNN",
+      "entity_type": "Technology",
+      "properties": {"full_name": "Convolutional Neural Network", "use": "Computer Vision"}
+    },
+    "rnn": {
+      "name": "RNN",
+      "entity_type": "Technology",
+      "properties": {"full_name": "Recurrent Neural Network", "use": "Sequence Modeling"}
+    },
+    "lstm": {
+      "name": "LSTM",
+      "entity_type": "Technology",
+      "properties": {"full_name": "Long Short-Term Memory", "use": "Sequence Modeling"}
+    },
+    "gan": {
+      "name": "GAN",
+      "entity_type": "Technology",
+      "properties": {"full_name": "Generative Adversarial Network", "use": "Image Generation"}
+    },
+    "meta": {
+      "name": "Meta",
+      "entity_type": "Organization",
+      "properties": {"founded": "2004", "formerly": "Facebook"}
+    },
+    "hugging_face": {
+      "name": "Hugging Face",
+      "entity_type": "Organization",
+      "properties": {"description": "Open source AI community and model hub"}
+    },
+    "gpt4": {
+      "name": "GPT-4",
+      "entity_type": "Technology",
+      "properties": {"developer": "OpenAI", "type": "Multimodal Language Model"}
+    },
+    "llama": {
+      "name": "LLaMA",
+      "entity_type": "Technology",
+      "properties": {"developer": "Meta", "type": "Open Source Language Model"}
+    },
+    "rag": {
+      "name": "RAG",
+      "entity_type": "Technology",
+      "properties": {"full_name": "Retrieval-Augmented Generation", "description": "Combining retrieval with generation for improved QA"}
+    },
+    "knowledge_graph": {
+      "name": "知识图谱",
+      "entity_type": "Technology",
+      "properties": {"description": "Graph-structured knowledge representation"}
+    },
+    "embedding": {
+      "name": "Embedding",
+      "entity_type": "Concept",
+      "properties": {"description": "Dense vector representation of text or entities"}
+    },
+    "fine_tuning": {
+      "name": "微调",
+      "entity_type": "Concept",
+      "properties": {"description": "Adapting pre-trained models to specific tasks"}
+    },
+    "pre_training": {
+      "name": "预训练",
+      "entity_type": "Concept",
+      "properties": {"description": "Training models on large-scale unsupervised data"}
+    },
+    "transfer_learning": {
+      "name": "迁移学习",
+      "entity_type": "Concept",
+      "properties": {"description": "Transferring knowledge from one task to another"}
+    },
+    "multimodal": {
+      "name": "多模态",
+      "entity_type": "Concept",
+      "properties": {"description": "Processing multiple types of data (text, image, audio)"}
+    },
+    "nvidia": {
+      "name": "NVIDIA",
+      "entity_type": "Organization",
+      "properties": {"description": "GPU and AI chip manufacturer"}
+    },
+    "andrew_ng": {
+      "name": "Andrew Ng",
+      "entity_type": "Person",
+      "properties": {"affiliation": "Stanford / Landing AI", "role": "AI Educator and Researcher"}
+    },
+    "prompt_engineering": {
+      "name": "提示工程",
+      "entity_type": "Concept",
+      "properties": {"description": "Crafting effective prompts for LLMs"}
+    },
+    "pytorch": {
+      "name": "PyTorch",
+      "entity_type": "Technology",
+      "properties": {"developer": "Meta", "type": "Deep Learning Framework"}
+    },
+    "tensorflow": {
+      "name": "TensorFlow",
+      "entity_type": "Technology",
+      "properties": {"developer": "Google", "type": "Deep Learning Framework"}
+    },
+    "graph_neural_network": {
+      "name": "图神经网络",
+      "entity_type": "Technology",
+      "properties": {"description": "Neural networks operating on graph-structured data"}
+    },
+    "reinforcement_learning": {
+      "name": "强化学习",
+      "entity_type": "Technology",
+      "properties": {"description": "Learning through interaction with environment and rewards"}
+    },
+    "sam_altman": {
+      "name": "Sam Altman",
+      "entity_type": "Person",
+      "properties": {"role": "CEO of OpenAI"}
+    },
+    "self_supervised_learning": {
+      "name": "自监督学习",
+      "entity_type": "Concept",
+      "properties": {"description": "Learning from data labels generated from the data itself"}
+    },
+    "anthropic": {
+      "name": "Anthropic",
+      "entity_type": "Organization",
+      "properties": {"description": "AI safety company, creator of Claude"}
+    },
+    "claude": {
+      "name": "Claude",
+      "entity_type": "Technology",
+      "properties": {"developer": "Anthropic", "type": "AI Assistant"}
+    }
+  },
+  "edges": [
+    {"source": "transformer", "target": "attention_mechanism", "relation": "uses", "properties": {}},
+    {"source": "transformer", "target": "deep_learning", "relation": "belongs_to", "properties": {}},
+    {"source": "transformer", "target": "nlp", "relation": "applied_in", "properties": {}},
+    {"source": "gpt", "target": "transformer", "relation": "uses", "properties": {}},
+    {"source": "gpt", "target": "openai", "relation": "developed_by", "properties": {}},
+    {"source": "gpt", "target": "nlp", "relation": "applied_in", "properties": {}},
+    {"source": "gpt", "target": "pre_training", "relation": "uses", "properties": {}},
+    {"source": "bert", "target": "transformer", "relation": "uses", "properties": {}},
+    {"source": "bert", "target": "google", "relation": "developed_by", "properties": {}},
+    {"source": "bert", "target": "nlp", "relation": "applied_in", "properties": {}},
+    {"source": "bert", "target": "pre_training", "relation": "uses", "properties": {}},
+    {"source": "gpt4", "target": "gpt", "relation": "improved", "properties": {}},
+    {"source": "gpt4", "target": "openai", "relation": "developed_by", "properties": {}},
+    {"source": "gpt4", "target": "multimodal", "relation": "supports", "properties": {}},
+    {"source": "llama", "target": "transformer", "relation": "uses", "properties": {}},
+    {"source": "llama", "target": "meta", "relation": "developed_by", "properties": {}},
+    {"source": "claude", "target": "anthropic", "relation": "developed_by", "properties": {}},
+    {"source": "claude", "target": "transformer", "relation": "uses", "properties": {}},
+    {"source": "openai", "target": "sam_altman", "relation": "led_by", "properties": {}},
+    {"source": "geoffrey_hinton", "target": "deep_learning", "relation": "pioneered", "properties": {}},
+    {"source": "yann_lecun", "target": "deep_learning", "relation": "pioneered", "properties": {}},
+    {"source": "yoshua_bengio", "target": "deep_learning", "relation": "pioneered", "properties": {}},
+    {"source": "deep_learning", "target": "machine_learning", "relation": "belongs_to", "properties": {}},
+    {"source": "nlp", "target": "deep_learning", "relation": "uses", "properties": {}},
+    {"source": "nlp", "target": "embedding", "relation": "uses", "properties": {}},
+    {"source": "computer_vision", "target": "deep_learning", "relation": "uses", "properties": {}},
+    {"source": "computer_vision", "target": "cnn", "relation": "uses", "properties": {}},
+    {"source": "cnn", "target": "deep_learning", "relation": "belongs_to", "properties": {}},
+    {"source": "rnn", "target": "deep_learning", "relation": "belongs_to", "properties": {}},
+    {"source": "lstm", "target": "rnn", "relation": "improved", "properties": {}},
+    {"source": "gan", "target": "deep_learning", "relation": "belongs_to", "properties": {}},
+    {"source": "gan", "target": "computer_vision", "relation": "applied_in", "properties": {}},
+    {"source": "yann_lecun", "target": "meta", "relation": "affiliated_with", "properties": {}},
+    {"source": "andrew_ng", "target": "machine_learning", "relation": "pioneered", "properties": {}},
+    {"source": "hugging_face", "target": "transformer", "relation": "provides_models", "properties": {}},
+    {"source": "hugging_face", "target": "nlp", "relation": "applied_in", "properties": {}},
+    {"source": "rag", "target": "nlp", "relation": "applied_in", "properties": {}},
+    {"source": "rag", "target": "embedding", "relation": "uses", "properties": {}},
+    {"source": "rag", "target": "knowledge_graph", "relation": "can_integrate", "properties": {}},
+    {"source": "knowledge_graph", "target": "nlp", "relation": "applied_in", "properties": {}},
+    {"source": "knowledge_graph", "target": "graph_neural_network", "relation": "uses", "properties": {}},
+    {"source": "graph_neural_network", "target": "deep_learning", "relation": "belongs_to", "properties": {}},
+    {"source": "fine_tuning", "target": "transfer_learning", "relation": "belongs_to", "properties": {}},
+    {"source": "transfer_learning", "target": "machine_learning", "relation": "belongs_to", "properties": {}},
+    {"source": "pre_training", "target": "self_supervised_learning", "relation": "uses", "properties": {}},
+    {"source": "multimodal", "target": "deep_learning", "relation": "belongs_to", "properties": {}},
+    {"source": "prompt_engineering", "target": "nlp", "relation": "related_to", "properties": {}},
+    {"source": "pytorch", "target": "meta", "relation": "developed_by", "properties": {}},
+    {"source": "tensorflow", "target": "google", "relation": "developed_by", "properties": {}},
+    {"source": "pytorch", "target": "deep_learning", "relation": "supports", "properties": {}},
+    {"source": "tensorflow", "target": "deep_learning", "relation": "supports", "properties": {}},
+    {"source": "nvidia", "target": "deep_learning", "relation": "provides_hardware", "properties": {}},
+    {"source": "reinforcement_learning", "target": "machine_learning", "relation": "belongs_to", "properties": {}},
+    {"source": "google", "target": "deep_learning", "relation": "invests_in", "properties": {}},
+    {"source": "anthropic", "target": "openai", "relation": "competes_with", "properties": {}},
+    {"source": "meta", "target": "openai", "relation": "competes_with", "properties": {}}
+  ]
+}

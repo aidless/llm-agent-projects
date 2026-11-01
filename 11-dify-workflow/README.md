@@ -64,6 +64,11 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 pytest tests/ -v
 ```
 
+> **2026-11-01 修复**：`storage/`（`execution_log.py`、`workflow_store.py`）曾被
+> `.gitignore` 的 `storage/` 规则排除而从未入库，fresh clone 后项目无法 import、
+> 测试全部无法收集。已收窄 `.gitignore` 并纳入版本控制；89 条测试实测通过。
+> 修复不改变任何工作流语义（仅让已有代码可运行）。
+
 ### Docker 部署
 ```bash
 docker-compose up --build
@@ -104,5 +109,5 @@ docker-compose up --build
 ├── nodes/         # 节点实现
 ├── storage/       # 存储层
 ├── templates/     # 内置模板
-└── tests/         # 测试 (25+)
+└── tests/         # 测试 (89, 2026-11-01 实测)
 ```

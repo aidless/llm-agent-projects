@@ -61,7 +61,10 @@ coverage.xml
 .ruff_cache/
 
 # Data and caches (project-local)
-data/
+# data/ 含 sample_kg.json 测试夹具（39 nodes / 56 edges），需入库；
+# 仅忽略运行时产物（*.db / *.jsonl）。
+data/*.db
+data/*.jsonl
 chroma_data/
 model_cache/
 storage/

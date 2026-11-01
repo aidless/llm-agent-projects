@@ -10,7 +10,7 @@
 > | **Evidence** | 6 typed spans (`llm.call`, `tool.execute`, `retrieval.query`, etc.); real Prometheus-style metrics (counter/gauge/histogram); trace-context propagation works across FastAPI middleware. |
 > | **Limitations** | No OTLP wire-protocol export (uses in-process collectors only); UI is plain REST/Swagger, not a Grafana-style dashboard; sampling is naive (every trace). |
 > | **Stack** | FastAPI · SQLite · Prometheus client conventions · asyncio |
-> | **Lines / Tests** | ~3.5K Python · 31 tests |
+> | **Lines / Tests** | ~3.5K Python · 89 tests (2026-11-01 实测; 此前 storage/ 被 gitignore 排除导致无法收集，已修复) |
 >
 > See [`results.md`](./results.md) for example traces & cost breakdown.
 
@@ -66,6 +66,20 @@ uvicorn app.main:app --reload --port 8000
 # 运行测试
 pytest tests/ -v
 ```
+
+## 证明什么 / 不证明什么
+
+- **证明**：Trace→Span→Event 模型与 W3C 风格上下文传播可跨 FastAPI 中间件工作；
+  6 类 LLM 特化 span、Prometheus 风格指标（counter/gauge/histogram）与成本分析可真实
+  运行（89 条测试 2026-11-01 实测通过）。
+- **不证明**：没有 OTLP wire-protocol 导出（只用进程内 collector），UI 是 REST/Swagger
+  而非 Grafana 仪表盘；采样是朴素的全采样。这些是实现边界，不是缺陷。
+- **可复现**：`pytest tests/ -v` 从项目根直接运行；测试不依赖真实 API key。
+
+> **2026-11-01 修复**：`storage/memory_store.py` 曾被 `.gitignore` 的 `storage/` 规则
+> 排除而从未入库，fresh clone 后项目无法 import、测试全部无法收集。已将 `.gitignore`
+> 收窄为只忽略运行时产物，并把 `storage/` 源码模块纳入版本控制。修复不改变任何
+> 观测语义（仅让已有代码可运行）。
 
 ## 项目结构
 

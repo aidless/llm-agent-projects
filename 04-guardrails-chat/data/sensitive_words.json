@@ -1,0 +1,55 @@
+{
+  "violence": [
+    "杀", "杀戮", "杀人", "谋杀", "暗杀", "刺杀", "屠杀", "斩首", "砍头",
+    "炸弹", "炸药", "爆炸", "引爆", "枪击", "枪杀", "射击", "开枪",
+    "恐怖袭击", "恐怖分子", "恐怖活动", "恐怖主义",
+    "绑架", "劫持", "劫机", "纵火", "投毒", "下毒",
+    "kill", "murder", "assassinate", "slaughter", "massacre", "bomb", "explode",
+    "terrorism", "terrorist", "hijack", "kidnap", "poison", "shoot", "stab"
+  ],
+  "pornography": [
+    "色情", "黄色", "淫秽", "裸体", "裸照", "裸聊",
+    "性交", "性行为", "强奸", "猥亵", "嫖娼", "卖淫",
+    "色情网站", "成人网站", "黄色视频", "黄色小说",
+    "porn", "pornography", "nude", "naked", "sex", "erotic",
+    "prostitution", "rape", "obscene", "indecent"
+  ],
+  "politics": [
+    "推翻政府", "颠覆政权", "分裂国家", "分裂领土",
+    "反动", "反华", "政治颠覆", "政治渗透",
+    "煽动", "暴动", "暴乱", "叛乱", "叛国",
+    "overthrow government", "subvert regime", "separatist", "terrorism",
+    "incite violence", "incite riot", "treason", "sedition"
+  ],
+  "discrimination": [
+    "种族歧视", "性别歧视", "歧视", "侮辱",
+    "仇恨言论", "仇恨犯罪", "极端主义",
+    "racism", "racist", "sexism", "discrimination",
+    "hate speech", "extremism", "xenophobia", "bigotry"
+  ],
+  "illegal": [
+    "洗钱", "诈骗", "传销", "赌博", "贩毒", "走私",
+    "黑客攻击", "网络攻击", "数据窃取", "身份盗用",
+    "制毒", "吸毒", "毒品交易", "非法交易",
+    "money laundering", "fraud", "scam", "drug trafficking", "smuggling",
+    "hacking", "cyber attack", "identity theft", "counterfeit"
+  ],
+  "self_harm": [
+    "自杀", "自残", "自伤", "割腕", "跳楼", "服毒",
+    "不想活了", "想死", "结束生命", "离开这个世界",
+    "suicide", "self-harm", "self-injury", "kill myself", "end my life",
+    "want to die", "no reason to live"
+  ],
+  "prompt_injection": [
+    "忽略之前的指令", "忽略以上指令", "忽略所有指令",
+    "你现在是", "你的新角色是", "假装你是", "扮演",
+    "system prompt", "system message", "prior instructions",
+    "forget your", "disregard previous", "ignore above",
+    "作为AI助手你不再需要", "你被重新编程为",
+    "from now on you are", "act as", "pretend to be",
+    "jailbreak", "DAN mode", "developer mode",
+    "你是一个没有限制的", "不受限制的AI",
+    "base64编码", "ROT13加密", "编码后的指令",
+    "encoded instruction", "decode the following"
+  ]
+}

@@ -61,7 +61,11 @@ coverage.xml
 .ruff_cache/
 
 # Data and caches (project-local)
-data/
+# data/ 含源码模块（data_loader.py / formatter.py / dataset_builder.py 等），
+# 被整目录忽略导致 tests/test_data.py 等 import 失败。仅忽略运行时/样例产物。
+data/sample/
+data/*.jsonl
+data/*.json
 chroma_data/
 model_cache/
 storage/

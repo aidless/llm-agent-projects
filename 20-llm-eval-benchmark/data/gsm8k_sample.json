@@ -1,0 +1,217 @@
+{
+  "benchmark": "GSM8K",
+  "description": "Grade School Math 8K - sample dataset",
+  "total_problems": 30,
+  "problems": [
+    {
+      "id": 1,
+      "question": "A baker has 150 apples. He uses 3 apples to make each pie. How many pies can he make?",
+      "answer": 50,
+      "solution": "The baker has 150 apples and uses 3 per pie. 150 / 3 = 50 pies.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 2,
+      "question": "Sarah has 24 cookies. She wants to share them equally among 6 friends. How many cookies does each friend get?",
+      "answer": 4,
+      "solution": "24 cookies / 6 friends = 4 cookies per friend.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 3,
+      "question": "A train travels at 60 miles per hour. How far will it travel in 3.5 hours?",
+      "answer": 210,
+      "solution": "Distance = speed x time = 60 x 3.5 = 210 miles.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 4,
+      "question": "Tom bought a shirt for $25.50 and a pair of pants for $42.75. He gave the cashier $100. How much change should he get?",
+      "answer": 31.75,
+      "solution": "Total cost = 25.50 + 42.75 = 68.25. Change = 100 - 68.25 = $31.75.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 5,
+      "question": "A rectangle has a length of 12 cm and a width of 8 cm. What is its area?",
+      "answer": 96,
+      "solution": "Area = length x width = 12 x 8 = 96 square cm.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 6,
+      "question": "If 5 workers can complete a task in 10 days, how many days would 2 workers take to complete the same task?",
+      "answer": 25,
+      "solution": "Total work = 5 x 10 = 50 worker-days. For 2 workers: 50 / 2 = 25 days.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 7,
+      "question": "A water tank can hold 500 liters. It is currently 60% full. How many more liters are needed to fill it completely?",
+      "answer": 200,
+      "solution": "Current amount = 500 x 0.60 = 300 liters. Needed = 500 - 300 = 200 liters.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 8,
+      "question": "The ratio of boys to girls in a class is 3:2. If there are 30 students in total, how many boys are there?",
+      "answer": 18,
+      "solution": "Total ratio parts = 3 + 2 = 5. Each part = 30 / 5 = 6. Boys = 3 x 6 = 18.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 9,
+      "question": "A car's price was reduced by 20% to $16,000. What was the original price?",
+      "answer": 20000,
+      "solution": "Let original price be x. x - 0.20x = 16000, so 0.80x = 16000, x = 16000 / 0.80 = $20,000.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 10,
+      "question": "John can type 80 words per minute. How many words can he type in 45 minutes?",
+      "answer": 3600,
+      "solution": "Words = 80 x 45 = 3,600 words.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 11,
+      "question": "A store is having a 30% off sale. If an item originally costs $85, what is the sale price?",
+      "answer": 59.5,
+      "solution": "Discount = 85 x 0.30 = 25.50. Sale price = 85 - 25.50 = $59.50.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 12,
+      "question": "Maria saved $120 in January and $180 in February. In March, she saved 25% more than in February. How much did she save in total over three months?",
+      "answer": 525,
+      "solution": "March savings = 180 + (180 x 0.25) = 180 + 45 = 225. Total = 120 + 180 + 225 = $525.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 13,
+      "question": "A farmer has chickens and rabbits. There are 35 heads and 94 legs in total. How many chickens are there?",
+      "answer": 23,
+      "solution": "Let c = chickens, r = rabbits. c + r = 35, 2c + 4r = 94. From first: c = 35 - r. Substituting: 2(35-r) + 4r = 94, 70 - 2r + 4r = 94, 2r = 24, r = 12. Chickens = 35 - 12 = 23.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 14,
+      "question": "What is the sum of all integers from 1 to 50?",
+      "answer": 1275,
+      "solution": "Sum = n(n+1)/2 = 50 x 51 / 2 = 1275.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 15,
+      "question": "A pool is being filled at a rate of 15 liters per minute. It already has 200 liters and has a capacity of 800 liters. How many minutes until it is full?",
+      "answer": 40,
+      "solution": "Remaining capacity = 800 - 200 = 600 liters. Time = 600 / 15 = 40 minutes.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 16,
+      "question": "If a recipe requires 2.5 cups of flour for 12 muffins, how many cups are needed for 30 muffins?",
+      "answer": 6.25,
+      "solution": "Flour per muffin = 2.5 / 12. For 30 muffins: (2.5 / 12) x 30 = 2.5 x 2.5 = 6.25 cups.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 17,
+      "question": "A circular garden has a radius of 7 meters. What is its circumference? (Use pi = 22/7)",
+      "answer": 44,
+      "solution": "Circumference = 2 x pi x r = 2 x (22/7) x 7 = 2 x 22 = 44 meters.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 18,
+      "question": "A student scored 85, 92, 78, and 95 on four tests. What is the average score?",
+      "answer": 87.5,
+      "solution": "Average = (85 + 92 + 78 + 95) / 4 = 350 / 4 = 87.5.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 19,
+      "question": "Alice is 3 years older than Bob. Bob is twice as old as Carol. If Carol is 8, how old is Alice?",
+      "answer": 19,
+      "solution": "Bob = 2 x 8 = 16. Alice = 16 + 3 = 19 years old.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 20,
+      "question": "A book has 350 pages. If Sarah reads 25 pages per day, how many days will it take to finish the book?",
+      "answer": 14,
+      "solution": "Days = 350 / 25 = 14 days.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 21,
+      "question": "A triangle has sides of length 5, 12, and 13. What is its area?",
+      "answer": 30,
+      "solution": "This is a right triangle (5^2 + 12^2 = 13^2). Area = (1/2) x 5 x 12 = 30.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 22,
+      "question": "If the population of a town grows by 5% each year, and the current population is 20,000, what will it be after 2 years?",
+      "answer": 22050,
+      "solution": "After 1 year: 20000 x 1.05 = 21000. After 2 years: 21000 x 1.05 = 22050.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 23,
+      "question": "A box contains 8 red balls and 12 blue balls. If 2 balls are drawn at random without replacement, what is the probability both are red?",
+      "answer": 0.141,
+      "solution": "P(first red) = 8/20. P(second red) = 7/19. P(both) = (8/20) x (7/19) = 56/380 = 14/95.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 24,
+      "question": "A ladder leans against a wall. The foot of the ladder is 6 feet from the wall, and the top is 8 feet high. What is the length of the ladder?",
+      "answer": 10,
+      "solution": "By Pythagorean theorem: length = sqrt(6^2 + 8^2) = sqrt(36 + 64) = sqrt(100) = 10 feet.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 25,
+      "question": "Mike earns $15 per hour and works 40 hours per week. He gets a 10% raise. How much does he earn per week after the raise?",
+      "answer": 660,
+      "solution": "New hourly rate = 15 x 1.10 = 16.50. Weekly earnings = 16.50 x 40 = $660.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 26,
+      "question": "A jar contains coins totaling $4.50. If there are 30 coins consisting of only dimes and quarters, how many quarters are there?",
+      "answer": 10,
+      "solution": "Let d = dimes, q = quarters. d + q = 30, 0.10d + 0.25q = 4.50. d = 30 - q. 0.10(30-q) + 0.25q = 4.50, 3 - 0.10q + 0.25q = 4.50, 0.15q = 1.50, q = 10.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 27,
+      "question": "The temperature was -3 degrees Celsius in the morning and rose by 15 degrees by noon. What was the temperature at noon?",
+      "answer": 12,
+      "solution": "Temperature = -3 + 15 = 12 degrees Celsius.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 28,
+      "question": "A store buys items for $40 each and sells them for $65. What is the profit percentage?",
+      "answer": 62.5,
+      "solution": "Profit = 65 - 40 = $25. Profit percentage = (25/40) x 100 = 62.5%.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 29,
+      "question": "If 3 pipes can fill a tank in 6 hours, how long would 9 pipes take?",
+      "answer": 2,
+      "solution": "More pipes means less time (inverse proportion). 6 x (3/9) = 6 x (1/3) = 2 hours.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 30,
+      "question": "A concert hall has 40 rows with 25 seats in each row. If 80% of seats are sold, how many tickets were sold?",
+      "answer": 800,
+      "solution": "Total seats = 40 x 25 = 1000. Tickets sold = 1000 x 0.80 = 800.",
+      "difficulty": "medium"
+    }
+  ]
+}

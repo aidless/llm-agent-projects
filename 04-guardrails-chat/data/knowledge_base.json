@@ -1,0 +1,14 @@
+{
+  "facts": [
+    {"id": "f001", "fact": "Python 是一种高级编程语言，由 Guido van Rossum 于 1991 年首次发布。", "source": "official"},
+    {"id": "f002", "fact": "FastAPI 是一个用于构建 API 的现代 Python Web 框架，基于 Starlette 和 Pydantic。", "source": "official"},
+    {"id": "f003", "fact": "地球距离太阳约 1.5 亿公里（1个天文单位）。", "source": "science"},
+    {"id": "f004", "fact": "水的化学式是 H2O，由两个氢原子和一个氧原子组成。", "source": "science"},
+    {"id": "f005", "fact": "中国的首都是北京，人口约 2189 万（2023年）。", "source": "geography"},
+    {"id": "f006", "fact": "OpenAI 成立于 2015 年，总部位于美国旧金山。", "source": "tech"},
+    {"id": "f007", "fact": "HTTP 协议默认端口是 80，HTTPS 默认端口是 443。", "source": "tech"},
+    {"id": "f008", "fact": "光在真空中的传播速度约为每秒 299,792,458 米（约30万公里/秒）。", "source": "science"},
+    {"id": "f009", "fact": "DeepSeek 是中国的人工智能公司，专注于大语言模型的研发。", "source": "tech"},
+    {"id": "f010", "fact": "长城的建造始于公元前 7 世纪，总长度超过 21,000 公里。", "source": "history"}
+  ]
+}

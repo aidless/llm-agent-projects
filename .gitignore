@@ -61,10 +61,16 @@ coverage.xml
 .ruff_cache/
 
 # Data and caches
-data/
+# data/ 含 20-llm-eval-benchmark 的 4 个 sample JSON 测试夹具，需入库；
+# 仅忽略运行时产物（*.db / *.jsonl）。
+data/*.db
+data/*.jsonl
 chroma_data/
 model_cache/
-storage/
+# NOTE: storage/ 不再整目录忽略 —— 11-dify-workflow 与 17-llm-observability 的
+# storage/ 存放的是「存储层源码」(execution_log.py / workflow_store.py / memory_store.py),
+# 被整目录忽略导致 fresh clone 后这两个项目无法 import、测试全部无法收集。
+# 改为只忽略运行时产物(如需): *.db / *.jsonl / *.log 由各项目 .gitignore 自理。
 reports/
 
 # Docker

@@ -64,7 +64,7 @@ coverage.xml
 data/
 chroma_data/
 model_cache/
-storage/
+# storage/ 是存储层源码 (execution_log.py, workflow_store.py)，需入库；不再整目录忽略
 reports/
 
 # Docker

@@ -204,20 +204,43 @@ class Histogram:
 
     def to_dict(self) -> Dict[str, Any]:
         with self._lock:
-            return {
-                "type": "histogram",
-                "name": self.name,
-                "description": self.description,
-                "tags": self.tags,
-                "count": self._count,
-                "sum": self._sum,
-                "avg": self._sum / self._count if self._count > 0 else 0.0,
-                "min": min(self._values) if self._values else 0.0,
-                "max": max(self._values) if self._values else 0.0,
-                "p50": self.percentile(50) if self._values else 0.0,
-                "p95": self.percentile(95) if self._values else 0.0,
-                "p99": self.percentile(99) if self._values else 0.0,
-                "buckets": {
-                    str(b): c for b, c in zip(self._buckets + ["+Inf"], self._bucket_counts)
-                },
-            }
+            # 关键修复：percentile() 内部也会 with self._lock，threading.Lock 非重入
+            # → 在持锁块内直接调用会自死锁（Histogram::test_to_dict 曾挂死）。
+            # 先在锁内取快照/局部值，锁外再算分位数。
+            values = list(self._values)
+            count = self._count
+            total = self._sum
+            bucket_counts = list(self._bucket_counts)
+            buckets = list(self._buckets)
+        p50 = Histogram._percentile_of(values, 50)
+        p95 = Histogram._percentile_of(values, 95)
+        p99 = Histogram._percentile_of(values, 99)
+        return {
+            "type": "histogram",
+            "name": self.name,
+            "description": self.description,
+            "tags": self.tags,
+            "count": count,
+            "sum": total,
+            "avg": total / count if count > 0 else 0.0,
+            "min": min(values) if values else 0.0,
+            "max": max(values) if values else 0.0,
+            "p50": p50,
+            "p95": p95,
+            "p99": p99,
+            "buckets": {
+                str(b): c for b, c in zip(buckets + ["+Inf"], bucket_counts)
+            },
+        }
+
+    @staticmethod
+    def _percentile_of(values: List[float], p: float) -> float:
+        """对快照 values 计算分位数 (0-100)，不持锁（供 to_dict 在锁外调用）。"""
+        if not values:
+            return 0.0
+        sorted_values = sorted(values)
+        idx = (p / 100.0) * (len(sorted_values) - 1)
+        lower = int(math.floor(idx))
+        upper = min(lower + 1, len(sorted_values) - 1)
+        frac = idx - lower
+        return sorted_values[lower] + frac * (sorted_values[upper] - sorted_values[lower])
