@@ -280,4 +280,101 @@ Each project is released under the MIT License — see the project-level
 
 ## Author
 
+```mermaid
+flowchart LR
+    Q[用户请求] --> GW[03 multi-model-gateway<br/>4 路由策略 · 多 key 轮换 · 自动降级]
+    GW --> GR[04 guardrails-chat<br/>注入检测 · 7 类敏感过滤 · 幻觉检测]
+    GR --> RAG[01 rag-knowledge-base / 16 kg-rag-fusion<br/>BM25+向量 RRF · cross-encoder 重排 · KG 多跳]
+    RAG --> MEM[18 agent-long-term-memory<br/>语义/情景/程序/工作记忆 · 时间衰减]
+    MEM --> AG[02 agent-workflow · 07 code-review-agent · 11 dify-workflow<br/>Planner/Executor · AST 分析 · DAG 引擎]
+    AG --> SB[15 agent-security-sandbox<br/>RestrictedPython · 4 级策略 · Bearer 认证]
+    SB --> OBS[17 llm-observability<br/>trace/span/metric/log · 成本分析]
+    OBS --> EVAL[12 prompt-eval-framework · 20 llm-eval-benchmark<br/>BLEU/ROUGE · Wilson CI · McNemar]
+    INF[06 lora-finetune · 09 multimodal · 19 voice · 14 mcp<br/>训练 / 多模态 / 语音 / MCP] -.独立子项目.-> EVAL
+```
+
+（示意总览：各子项目相互独立、可单独运行；`demo_pipeline.py` 串联的是
+03 → 04 → 01+16 → 17 这条演示链路。）
+
+```text
+$ python demo_pipeline.py        # Mock 模式，无需 API key
+[Step 2] 04 输入安全护栏 — Prompt Injection / 敏感内容检测
+  总耗时: 0.2 ms
+  支撑度: 0.2
+  幻觉风险: high
+  Token: 108 in + 147 out
+  成本估算: $0.000000
+  检索结果: 2 个文档 (top score: 0.167)
+```
+
+（Mock 模式下「幻觉风险 high / 支撑度 20%」是演示链路对 mock 检索得分的
+真实计算结果，说明护栏模块在无 LLM 时按低支撑度如实降级，属预期行为。）
+
+**各子项目测试数字（2026-07-22 全量清点，见下表）+ 当前 CI 基线状态。**
+
+<details>
+<summary>Test Coverage Summary（2026-07-22，1182 tests，点击展开）</summary>
+
+| # | Project | Tests | Pass | Skip | Notes |
+|---|---|---:|---:|---:|---|
+| 01 | rag-knowledge-base | 30 | ✅ | | `pydantic-settings`, `loguru`, `python-magic` |
+| 02 | agent-workflow | 33 | ✅ | 4 | SSRF fix verified; `chromadb`, `sympy`, `aiofiles` |
+| 03 | multi-model-gateway | 30 | ✅ | | dev-bypass via `GATEWAY_AUTH_DISABLED=true` |
+| 04 | guardrails-chat | 67 | ✅ | | dev-bypass via `GUARDRAILS_AUTH_DISABLED=true` |
+| 05 | vector-db-manager | 16 | ✅ | | |
+| 06 | lora-finetune | 54 | ✅ | 3 | `SKIP_HEAVY_TESTS=1` (peft/torch imports heavy) |
+| 07 | code-review-agent | 73 | ✅ | | `langgraph` |
+| 09 | multimodal-doc-understanding | 67 | ✅ | 1 | Mock w/ guard; real impl available |
+| 11 | dify-workflow | 89 | ✅ | | |
+| 12 | prompt-eval-framework | 75 | ✅ | 3 | `SKIP_HF_DOWNLOAD=1` for BERTScore (network-blocked) |
+| 14 | mcp-tool-integration | 92 | ✅ | | |
+| 15 | agent-security-sandbox | 106 | ✅ | | /execute requires Bearer |
+| 16 | kg-rag-fusion | 98 | ✅ | | NER now spaCy zh_core_web_sm |
+| 17 | llm-observability | 89 | ✅ | | |
+| 18 | agent-long-term-memory | 77 | ✅ | | Mock w/ guard; real LLMConsolidator available |
+| 19 | voice-ai-assistant | 82 | ✅ | | Mock w/ guard; real WhisperASR+EdgeTTS available |
+| 20 | llm-eval-benchmark | 105 | ✅ | | All benchmarks mocked, no LLM API required |
+| **Σ** | **17 active projects** | **1182** | **✅** | **11** | |
+
+</details>
+
+**当前 CI 基线（`results/baseline.txt`，悲观记录，勿混淆）**：上表 1182 全绿
+是在**共享 venv（Python 3.13.14）+ 全依赖安装**环境下的清点结果；
+后来的**裸 Python 3.12 无逐项目依赖**的本机重跑中，17 个子项目里 15 个因
+缺包产生 collection error 被悲观记为 `failing`，仅 `09`/`18` 为 `green`
+（`09-multimodal-doc-understanding`、`18-agent-long-term-memory`）。
+CI 门按此基线只惩罚「新失败/由绿转红」，不把环境差异当回归。
+**当前演示链路实跑数字（2026-11-10，Mock 模式）**：`demo_pipeline.py`
+端到端 0.2 ms，检索 2 文档（top score 0.167），Token 108 in + 147 out，
+mock 成本 $0.000000。
+
+> **Methodology**: pytest on a single shared venv at `.ci-cache/venv/`
+> (Python 3.13.14). LLM calls disabled via `ALLOW_MOCK_PROVIDERS=true` etc.
+> Tests run **without** real API keys; coverage of LLM-path code is *not*
+> measured by these numbers (it would require live API + cost budget).
+>
+> **3 archived projects (`08`, `10`, `13`) excluded**: their tests, if any,
+> were deprecated along with the projects (see `archive/README.md`).
+>
+> **Skip semantics**:
+> - `SKIP_HF_DOWNLOAD=1` skips tests that download from huggingface.co
+>   (firewall may block HF Hub). Used by 12.
+> - `SKIP_HEAVY_TESTS=1` skips tests importing peft/torch (~1 GB).
+>   Used by 06.
+> - `ALLOW_MOCK_PROVIDERS=true` etc. enables mock LLM/vision/ASR/TTS
+>   (NOT actually invoking external API).
+>
+> **Running all tests** (after `pip install -r requirements.txt` + the
+> extra deps in `notes` above):
+> ```bash
+> export PYTHONPATH=.
+> for p in 01-rag-knowledge-base 02-agent-workflow ...; do
+>   (cd "$p" && pytest tests/ -q --tb=line) || break
+> done
+> ```
+
+- **作品集集合，不是统一生产代码库**：17 个子项目按独立脚手架标准生成，质量分层见顶部「Important context」块，未对齐同一工程标准。
+- 1182 测试数字**不含 LLM 真实路径覆盖**：全部 mock 运行，无真实 API 消耗；上表与裸环境重跑的 `failing` 基线是两种环境的记录，不要混用。
+- Mock 默认组件：`09` 视觉、`18` 记忆固化、`19` ASR/TTS 默认 Mock（env var 显式切换真实现）；`11` LLMNode 默认 Mock。
+- 三个归档项目（`08`/`10`/`13`）已废弃，其中 `13` 的「GPT-4o + DeepSeek 交叉验证」叙事是虚构的，勿引用。
 [@aidless](https://github.com/aidless) — Liu Zewen
