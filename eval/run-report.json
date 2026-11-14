@@ -1,0 +1,129 @@
+{
+ "total": 20,
+ "passed": 20,
+ "failed": 0,
+ "selftest": false,
+ "failed_by_axis": {},
+ "results": [
+  {
+   "id": "EV-01",
+   "axis": "scorer/accuracy",
+   "ok": true,
+   "detail": "0.714286"
+  },
+  {
+   "id": "EV-02",
+   "axis": "scorer/accuracy",
+   "ok": true,
+   "detail": "0.3589"
+  },
+  {
+   "id": "EV-03",
+   "axis": "scorer/accuracy",
+   "ok": true,
+   "detail": "5/7"
+  },
+  {
+   "id": "EV-04",
+   "axis": "scorer/f1",
+   "ok": true,
+   "detail": "0.75"
+  },
+  {
+   "id": "EV-05",
+   "axis": "scorer/passk",
+   "ok": true,
+   "detail": "0.976676"
+  },
+  {
+   "id": "EV-06",
+   "axis": "scorer/passk",
+   "ok": true,
+   "detail": "0.84"
+  },
+  {
+   "id": "EV-07",
+   "axis": "scorer/mcnemar",
+   "ok": true,
+   "detail": "7.1111"
+  },
+  {
+   "id": "EV-08",
+   "axis": "scorer/mcnemar",
+   "ok": true,
+   "detail": "0.03/True"
+  },
+  {
+   "id": "EV-09",
+   "axis": "scorer/mean",
+   "ok": true,
+   "detail": "8.0"
+  },
+  {
+   "id": "EV-10",
+   "axis": "gsm8k/data",
+   "ok": true,
+   "detail": "30"
+  },
+  {
+   "id": "EV-11",
+   "axis": "gsm8k/data",
+   "ok": true,
+   "detail": "easy:10,hard:4,medium:16"
+  },
+  {
+   "id": "EV-12",
+   "axis": "gsm8k/extract",
+   "ok": true,
+   "detail": "50"
+  },
+  {
+   "id": "EV-13",
+   "axis": "mmlu/check",
+   "ok": true,
+   "detail": "True"
+  },
+  {
+   "id": "EV-14",
+   "axis": "humaneval/check",
+   "ok": true,
+   "detail": "True"
+  },
+  {
+   "id": "EV-15",
+   "axis": "mtbench/data",
+   "ok": true,
+   "detail": "10"
+  },
+  {
+   "id": "EV-16",
+   "axis": "registry/unknown",
+   "ok": true,
+   "detail": "raised ValueError"
+  },
+  {
+   "id": "EV-17",
+   "axis": "gsm8k/data",
+   "ok": true,
+   "detail": "raised FileNotFoundError"
+  },
+  {
+   "id": "EV-18",
+   "axis": "readme/claims",
+   "ok": true,
+   "detail": "MMLU/GSM8K/HumanEval/MT-Bench · Wilson C"
+  },
+  {
+   "id": "EV-19",
+   "axis": "readme/claims",
+   "ok": true,
+   "detail": "17 numbered projects"
+  },
+  {
+   "id": "EV-20",
+   "axis": "system-map/layers",
+   "ok": true,
+   "detail": "How the 17 active projects interconnect"
+  }
+ ]
+}

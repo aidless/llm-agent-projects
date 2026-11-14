@@ -378,3 +378,63 @@ mock 成本 $0.000000。
 - Mock 默认组件：`09` 视觉、`18` 记忆固化、`19` ASR/TTS 默认 Mock（env var 显式切换真实现）；`11` LLMNode 默认 Mock。
 - 三个归档项目（`08`/`10`/`13`）已废弃，其中 `13` 的「GPT-4o + DeepSeek 交叉验证」叙事是虚构的，勿引用。
 [@aidless](https://github.com/aidless) — Liu Zewen
+---
+
+## 验收标准与复算
+
+**判据**：本仓判为合格的条件是 `python3 eval/run_cases.py` 通过率必须为 100%（20/20），且 `make eval` 退出码必须为 0；任何一条失败即判为不合格。
+
+### 题库（`eval/cases.jsonl`，20 条）
+
+| axis | 条数 | 考什么 |
+|---|---|---|
+| scorer/accuracy | 3 | 5/7 正确时 `Scorer.accuracy` 的 value、Wilson 95% 下界、`details` 里的 correct/total |
+| scorer/f1 | 1 | 3/4 正确时的 F1（precision=recall=0.75） |
+| scorer/passk | 2 | `1-(1-p)^k`：p=5/7、k=3、n=5 → 0.976676；p=0.6、k=2、n=3 → 0.84 |
+| scorer/mcnemar | 2 | 9:0 配对下的统计量 7.1111 与 p=0.03 / significant=True |
+| scorer/mean | 1 | 三条评分 8/6/10 归一化到 10 分制 = 8.0 |
+| gsm8k/data | 3 | 样本题数 30、难度分布 easy:10,hard:4,medium:16、坏数据路径抛 FileNotFoundError |
+| gsm8k/extract | 1 | 从第 1 题自带 solution 的 `#### 50` 解析出 50 |
+| mmlu/check | 1 | answer 索引 0 且模型答 "The answer is A" 时判对 |
+| humaneval/check | 1 | 返回含 `def has_close_elements(` 的代码时判对 |
+| mtbench/data | 1 | 对话条数 10 |
+| registry/unknown | 1 | 请求未知基准名 `nope` 抛 ValueError |
+| readme/claims | 2 | README 的两处自述：20 号项目能力行、17 个编号项目 |
+| system-map/layers | 1 | SYSTEM_MAP.md 的「17 个活跃项目互连」声明 |
+
+其中 17 条是 `expr`/`raises`（真调 `20-llm-eval-benchmark` 的 `engine.scorer`、`benchmarks` 与 `data/*.json`），3 条是 `doc`（只校验文档里既有的字符串声明，不产生新数字）。
+
+### 一键重跑
+
+```bash
+python3 eval/run_cases.py              # 20/20，退出码 0
+python3 eval/run_cases.py --save       # 重建 eval/run-report.json
+python3 eval/run_cases.py --selftest   # 篡改 EV-01 的期望值，必须 19/20（证明这套题会红）
+make eval                              # 根级 Makefile 的同一个入口
+```
+
+三个 python 命令都在**仓库根**执行：case 里把 `20-llm-eval-benchmark` 加入 `sys.path` 的路径由 `eval/run_cases.py` 自身位置推导，不依赖当前目录。
+
+### 数字如何复算
+
+每题 `verify` 字段就是复算代码，跑它一遍就得到 `expected`：
+
+- `expr`：执行 `verify`，读变量 `result` 与 `expected` 比较（int/float 走数值比较，其余按字符串）；
+- `raises`：`verify` 必须抛异常，且异常类型名等于 `expected`；
+- `doc`：`路径::正则`，在该文档里搜这个正则。
+
+期望值全部**现算**，不是抄 README：例如 EV-01 的 0.714286 就是 `Scorer.accuracy` 在 7 条结果（5 对 2 错）上的输出，改一行 `scorer.py` 的实现就会变红。`--save` 把逐条 `id/axis/ok/detail` 写进 `eval/run-report.json`，重跑 `--save` 即重建；`detail` 列在失败时同时给出实测值，可直接对数。
+
+### 失败归因
+
+`eval/run_cases.py` 失败时不只报 pass_rate，而是按 axis 汇总，输出形如 `<axis>: 1 条 —— <ID>`（例：`scorer/accuracy: 1 条 —— EV-01`），并按 axis 指向模块：
+
+| 失败 axis | 对应模块 |
+|---|---|
+| `scorer/*` | `20-llm-eval-benchmark/engine/scorer.py`（accuracy / Wilson / F1 / Pass@k / McNemar / 均值区间） |
+| `gsm8k/*` | `20-llm-eval-benchmark/benchmarks/gsm8k.py` + `data/gsm8k_sample.json`（加载、难度分布、答案提取） |
+| `mmlu/check`、`humaneval/check`、`mtbench/data` | 对应的 `benchmarks/*.py` 与其 `data/*_sample.json` |
+| `registry/unknown` | `20-llm-eval-benchmark/benchmarks/__init__.py` 的注册表分支 |
+| `readme/claims`、`system-map/layers` | 根级 `README.md` / `SYSTEM_MAP.md` 的声明漂移（文档与实现不一致） |
+
+退出码约定：0 = 全过；1 = 有 case 失败；2 = 题库本身坏了（读不了 / 缺字段 / 重复 id）。`make eval` 原样透传该退出码。既有的子项目 pytest 套件不在 `make eval` 里（其当前状态见 `results/baseline.txt`，多数子项目本来就是 failing），单独用 `make test-20` 跑。
