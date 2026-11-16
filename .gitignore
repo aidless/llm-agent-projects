@@ -72,6 +72,7 @@ model_cache/
 # 被整目录忽略导致 fresh clone 后这两个项目无法 import、测试全部无法收集。
 # 改为只忽略运行时产物(如需): *.db / *.jsonl / *.log 由各项目 .gitignore 自理。
 reports/
+results/status-matrix.observed.json
 
 # Docker
 .docker/

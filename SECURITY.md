@@ -10,7 +10,7 @@ not patched.
 **Please do not open a public issue for security problems.**
 
 Use GitHub's private reporting channel:
-**Security → Report a vulnerability** (https://github.com/llm-agent-projects/security/advisories/new),
+**Security → Report a vulnerability** (https://github.com/aidless/llm-agent-projects/security/advisories/new),
 or contact the maintainer directly.
 
 Please include:
