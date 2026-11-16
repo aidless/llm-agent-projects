@@ -1,440 +1,107 @@
-# LLM Agent Projects — Portfolio Collection
+# LLM Agent Projects
 
-[![CI Status](https://github.com/aidless/llm-agent-projects/actions/workflows/ci.yml/badge.svg)](https://github.com/aidless/llm-agent-projects/actions/workflows/ci.yml)
-[![Audit Date](https://img.shields.io/badge/audit-2026--07--22-blue)]()
-[![Archived](https://img.shields.io/badge/archived-3-yellow)]()
+[![CI](https://github.com/aidless/llm-agent-projects/actions/workflows/ci.yml/badge.svg)](https://github.com/aidless/llm-agent-projects/actions/workflows/ci.yml)
+[![offline matrix](https://img.shields.io/badge/offline%20matrix-results%2Fstatus--matrix.json-blue)](./results/status-matrix.json)
+[![archived 3](https://img.shields.io/badge/archived-3-yellow)](./archive/README.md)
 
-> **⚠️ Important context for hiring managers and reviewers (2026-07-22)**
->
-> This is a **portfolio collection**, not a unified production codebase. The
-> 17 numbered projects (`01`–`20`, with `08`/`10`/`13` archived — see below)
-> were generated as independent scaffolds to demonstrate breadth across the
-> LLM/Agent engineering space. They were **not** all built to the same
-> engineering standard. Specifically:
->
-> - **Strong (recommended review priority)**: `01`, `06`, `15`, `20`, `17` —
->   real implementations end-to-end.
-> - **Solid scaffolding**: `02`, `03`, `04`, `05`, `07`, `11`, `14` — useful
->   reference code, but read with a critical eye.
-> - **Archived (moved to `archive/`)**: `08` (Jaccard-only FAQ),
->   `10` (pure simulator), `13` (mocked LLM calls). These have prominent
->   ⚠ DEPRECATED banners explaining why.
-> - **Default-Mock components**: `09`, `18`, `19` ship with mock vision/ASR/TTS/
->   memory-consolidator by default; READMEs call these out at the top.
->
-> Every project has its own README with project-specific notes. **Read each
-> README's top section before evaluating the code.**
->
-> **🆕 2026-07-22 hard-fix audit (security + correctness)**:
->
-> | Area | What changed | Project |
-> |---|---|---|
-> | **SSRF** | Removed `requests.get(user_url)` blind fetch in agent tool | `02` |
-> | **Auth bypass** | `/execute` sandbox endpoint now requires Bearer token + per-IP token | `15` |
-> | **Mock hidden as real** | Startup guard requires VISION_PROVIDER=openai; Mock available for tests via ALLOW_MOCK_PROVIDERS=true | `09` |
-> | **Mock hidden as real** | Startup warns on keyword-only consolidator; real LLMConsolidator class needed for production (see manager/llm_consolidator.py) | `18` |
-> | **Mock hidden as real** | Startup guard requires ASR_PROVIDER/TTS_PROVIDER; real WhisperASR+EdgeTTS classes available (see asr/whisper_asr.py, tts/edge_tts.py) | `19` |
-> | **Fake metric** | BERTScore placeholder replaced with `bert-score` package (or honest NaN) | `12` |
-> | **Regex NER** | Replaced 14 hardcoded regex rules with `zh_core_web_sm` spaCy pipeline | `16` |
-> | **API auth** | `/v1/chat/completions` now requires Bearer token; per-key rate limiting | `03` |
-> | **API auth** | `/chat`, `/chat/stream`, sessions & audit endpoints require Bearer token | `04` |
+Independent scaffolds for LLM and agent engineering: 17 numbered projects stay on disk at the repository root (`01`–`07`, `09`, `11`, `12`, `14`–`20`), and `08` / `10` / `13` sit in [`archive/`](./archive/) with deprecation banners. Each directory is its own FastAPI-style tree. They were not built to one engineering standard.
+Machine-checked claims are the rows [`make check`](./Makefile) writes into [`results/status-matrix.json`](./results/status-matrix.json): per active project, offline pytest with mock providers and no API key, plus the tier copied into the table below. [`scripts/drift_check.py`](./scripts/drift_check.py) fails when that table and the JSON disagree, and when a `Strong` row is not backed by an exit-0 run with zero skips.
+[`SYSTEM_MAP.md`](./SYSTEM_MAP.md), per-project READMEs, and [`demo_pipeline.py`](./demo_pipeline.py) are narrative. This check does not execute a live model, and it does not certify them.
 
----
+**STATUS: WORK-IN-PROGRESS — not A yet**
 
-A curated collection of 20 production-grade LLM / AI Agent projects,
-spanning RAG, multi-agent orchestration, inference infrastructure, safety
-governance, evaluation, memory, fine-tuning, multimodal and voice.
+- GitHub About is a repository setting this change cannot write. The observed text and a replacement are in [Author and About](#author-and-about).
+- The old "Strong" list is not what this matrix measured. `06-lora-finetune` is `Unverified` because tests import `datasets`, `peft`, `transformers`, and `torch`, and `requirements-check.txt` does not install those. `20-llm-eval-benchmark` is `Default-mock` because `app/api/benchmark.py` builds `MockLLMClient` on the evaluate route. `05-vector-db-manager` is `Unverified` because `embeddings/manager.py` imports `sentence_transformers`.
+- `12-prompt-eval-framework` and `16-kg-rag-fusion` are in the table. `16` can be `Strong` under the suite rule while its default NER provider stays the regex dictionary; that limit is in the row notes.
+- `make check` does not run `demo_pipeline.py`. Archived import results are in `archived_import` (`08` and `13` imported `app.main` on the refresh that wrote the JSON; `10` raised `ImportError`).
+- Wall clock on the machine that wrote the JSON: venv plus `pip install -r requirements-check.txt` was 46 seconds with a warm wheel cache (2s + 44s), then the pytest refresh recorded as `duration_seconds`. A cold download of the same wheels was not timed separately. NLTK `punkt` was downloaded once in this session before that install timing. The pytest run itself is under a minute, inside the 15-minute fresh-clone budget.
 
-Each project is an independent, self-contained FastAPI service with a
-Docker setup, test suite, and a dedicated README. Pick one that matches
-your interest and follow its README to run.
+## Status matrix
 
-## Quick Index
+Tier rules applied by [`scripts/status_matrix.py`](./scripts/status_matrix.py) (the same function checks the JSON):
 
-| # | Project | Domain | Highlights | Status |
-|---|---------|--------|------------|--------|
-| 01 | [rag-knowledge-base](./01-rag-knowledge-base) | RAG | ChromaDB · BGE · BM25+vector RRF · cross-encoder rerank · citation | ✅ Strong |
-| 02 | [agent-workflow](./02-agent-workflow) | Agent | LangGraph · Planner/Executor/Reviewer/Summarizer · dual-layer memory | ⚠️ SSRF fix in 2026-07-22 |
-| 03 | [multi-model-gateway](./03-multi-model-gateway) | Infra | 4 routing strategies · auto-fallback · multi-key rotation | ✅ Solid |
-| 04 | [guardrails-chat](./04-guardrails-chat) | Safety | prompt-injection detection · 7-class sensitive filter · hallucination detection | ✅ Solid |
-| 05 | [vector-db-manager](./05-vector-db-manager) | RAG | web UI · model swap · chunking comparison | ✅ Solid |
-| 06 | [lora-finetune](./06-lora-finetune) | Training | LoRA / QLoRA · full SFT pipeline · 20 sample SFT data · eval · export | ✅ Strong |
-| 07 | [code-review-agent](./07-code-review-agent) | Agent | 5 specialised agents · AST analysis · GitHub PR integration | ✅ Solid |
-| — | [08-smart-customer-service](./archive/08-smart-customer-service) | Agent | (originally: RAG + human transfer) | ⚠️ **DEPRECATED** — Jaccard-only |
-| 09 | [multimodal-doc-understanding](./09-multimodal-doc-understanding) | Multimodal | OCR · table/layout · VQA · RAG · **OpenAIVisionClient (2026-07-22)** | ✅ Real impl available |
-| — | [10-inference-optimization](./archive/10-inference-optimization) | Infra | (originally: continuous batching · PagedAttention) | ⚠️ **DEPRECATED** — pure simulator |
-| 11 | [dify-workflow](./11-dify-workflow) | Agent | DAG engine · 8 node types · templates | ✅ Solid (LLMNode defaults to Mock) |
-| 12 | [prompt-eval-framework](./12-prompt-eval-framework) | Eval | BLEU/ROUGE/semantic-sim · LLM-as-Judge · A/B (t + bootstrap) | ✅ Fixed (2026-07-22 BERTScore → sentence-transformers) |
-| — | [13-paper-review-agent](./archive/13-paper-review-agent) | Agent | (originally: 5-dim review · cross-model validation) | ⚠️ **DEPRECATED** — all-LLM-mock |
-| 14 | [mcp-tool-integration](./14-mcp-tool-integration) | Protocol | MCP server/client · JSON-RPC 2.0 · registry · chain call | ✅ Solid |
-| 15 | [agent-security-sandbox](./15-agent-security-sandbox) | Safety | RestrictedPython · 4 policy levels · syscall interception · audit · **Bearer auth (2026-07-22)** | ✅ Strong |
-| 16 | [kg-rag-fusion](./16-kg-rag-fusion) | RAG | NetworkX KG · multi-hop · RRF fusion | ⚠️ NER is regex |
-| 17 | [llm-observability](./17-llm-observability) | Infra | OpenTelemetry-style · trace/span/metric/log · cost analysis | ✅ Strong |
-| 18 | [agent-long-term-memory](./18-agent-long-term-memory) | Memory | semantic/episodic/procedural/working · time-decay · importance · **LLMConsolidator + TF-IDF (2026-07-22)** | ✅ Real impl available |
-| 19 | [voice-ai-assistant](./19-voice-ai-assistant) | Voice | ASR/LLM/TTS pipeline · WebSocket · VAD · barge-in · **WhisperASR + EdgeTTS (2026-07-22)** | ✅ Real impl available |
-| 20 | [llm-eval-benchmark](./20-llm-eval-benchmark) | Eval | MMLU/GSM8K/HumanEval/MT-Bench · Wilson CI · McNemar | ✅ Strong |
-
-### 🚀 Real Implementations Added (2026-07-22)
-
-Previously Mock-default projects now ship with real production-grade implementations:
-
-| Project | New Real Class | Replaces | Trigger |
-|---|---|---|---|
-| `09` | `vision/openai_client.py` → `OpenAIVisionClient` | `MockVisionClient` / `MockVQAClient` / `MockChartClient` | `VISION_PROVIDER=openai` + `OPENAI_API_KEY` |
-| `18` | `manager/llm_consolidator.py` → `LLMConsolidator` | `MockLLMConsolidator` (keyword overlap) | `CONSOLIDATOR_PROVIDER=openai` + `OPENAI_API_KEY` |
-| `19` | `asr/whisper_asr.py` → `WhisperASR` (faster-whisper) | `MockASR` | `ASR_PROVIDER=whisper` + `pip install faster-whisper` |
-| `19` | `tts/edge_tts.py` → `EdgeTTS` (Microsoft Edge TTS) | `MockTTS` | `TTS_PROVIDER=edge-tts` + `pip install edge-tts` |
-
-All real implementations are **opt-in via env vars** — defaults remain Mock for testing. See [`.env.example`](./.env.example).
-
-### 🎬 End-to-End Pipeline Demo
-
-Run the integrated demo to see 03 → 04 → 01+16 → 17 in action:
-
-```bash
-# Mock mode (no API key required)
-python demo_pipeline.py
-
-# Real LLM mode
-export OPENAI_API_KEY=sk-xxx
-python demo_pipeline.py --real
-
-# Custom query + export report
-python demo_pipeline.py --query "如何优化 RAG 检索？" --export-report reports/out.json
-python demo_pipeline.py --query "..." --export-report reports/out.md
-```
-
-See [SYSTEM_MAP.md](./SYSTEM_MAP.md) for architecture diagrams and 7 pre-built pipelines.
-
-### 🧪 Continuous Integration
-
-A GitHub Actions workflow runs `demo_pipeline.py` on every push and uploads reports as artifacts:
-
-- [`.github/workflows/demo-pipeline.yml`](./.github/workflows/demo-pipeline.yml) — runs 3 different queries in Mock mode, exports JSON + Markdown reports, validates structure, uploads as artifacts
-
-### Archive
-
-Three projects have been moved to [`archive/`](./archive/) with prominent
-deprecation notices:
-
-| Project | Why archived |
+| Tier | Rule |
 |---|---|
-| `08-smart-customer-service` | Retrieval is Jaccard similarity + substring scoring, not a real LLM agent |
-| `10-inference-optimization` | Pure mathematical simulator with hardcoded latency formulas; no real GPU code |
-| `13-paper-review-agent` | All LLM calls return hardcoded dictionaries; the README's "GPT-4o + DeepSeek cross-validation" was fictional |
+| Strong | `pytest` exit 0, `passed > 0`, `failed = 0`, `errors = 0`, `skipped = 0`, `mock-default = no` |
+| Solid | exit 0 with the same failure counts, and `skipped > 0` |
+| Default-mock | exit 0, and non-test code still constructs a mock or keyword stand-in on the default path |
+| Unverified | the suite did not exit 0, timed out, or collected nothing |
 
-See [`archive/README.md`](./archive/README.md) for details.
+`needs-key = yes` means a non-test `.py` file mentions `API_KEY` or `api_key`. The check deletes key, token, secret, and password variables from the child environment before pytest starts. `run = passed + skipped + failed + errors`.
 
-## Domains at a Glance
+<!-- STATUS-MATRIX:BEGIN -->
+| project | tier | run | passed | skipped | failed | errors | needs-key | mock-default | notes |
+|---|---|---:|---:|---:|---:|---:|---|---|---|
+| 01-rag-knowledge-base | Strong | 30 | 30 | 0 | 0 | 0 | yes | no |  |
+| 02-agent-workflow | Solid | 37 | 33 | 4 | 0 | 0 | yes | no |  |
+| 03-multi-model-gateway | Strong | 30 | 30 | 0 | 0 | 0 | yes | no |  |
+| 04-guardrails-chat | Strong | 67 | 67 | 0 | 0 | 0 | yes | no |  |
+| 05-vector-db-manager | Unverified | 16 | 13 | 0 | 2 | 1 | yes | no | failed_node=tests/test_services.py::TestEmbeddingManager::test_list_empty_models; missing=sentence_transformers |
+| 06-lora-finetune | Unverified | 110 | 91 | 7 | 12 | 0 | yes | no | failed_node=tests/test_data.py::TestDatasetBuilder::test_build_hf_dataset; missing=datasets,peft,torch,transformers |
+| 07-code-review-agent | Strong | 73 | 73 | 0 | 0 | 0 | yes | no |  |
+| 09-multimodal-doc-understanding | Default-mock | 68 | 67 | 1 | 0 | 0 | yes | yes | mock:app/main.py:36 (+7) |
+| 11-dify-workflow | Default-mock | 89 | 89 | 0 | 0 | 0 | no | yes | mock:nodes/llm_node.py:48 |
+| 12-prompt-eval-framework | Solid | 78 | 75 | 3 | 0 | 0 | no | no | semantic_similarity is not Zhang BERTScore; SKIP_HF_DOWNLOAD=1 |
+| 14-mcp-tool-integration | Strong | 92 | 92 | 0 | 0 | 0 | no | no |  |
+| 15-agent-security-sandbox | Strong | 106 | 106 | 0 | 0 | 0 | no | no |  |
+| 16-kg-rag-fusion | Strong | 98 | 98 | 0 | 0 | 0 | no | no | default NER=regex; spaCy excluded by requirements-check.txt |
+| 17-llm-observability | Strong | 89 | 89 | 0 | 0 | 0 | no | no |  |
+| 18-agent-long-term-memory | Default-mock | 77 | 77 | 0 | 0 | 0 | yes | yes | mock:app/main.py:32 (+3) |
+| 19-voice-ai-assistant | Default-mock | 82 | 82 | 0 | 0 | 0 | yes | yes | mock:app/main.py:30 (+4) |
+| 20-llm-eval-benchmark | Default-mock | 105 | 105 | 0 | 0 | 0 | no | yes | mock:app/api/benchmark.py:90 |
+<!-- STATUS-MATRIX:END -->
 
-- **RAG & Retrieval (4)** — 01, 05, 09, 16
-- **Agent & Multi-agent (5)** — 02, 07, ~~08~~, 11, ~~13~~
-- **Inference Infrastructure (3)** — 03, ~~10~~, 17
+## How to run the check
 
-## What this collection proves (and what it does not)
-
-**Problem this collection addresses.** LLM/AI-agent engineering has
-rapidly outgrown toy examples. A hiring manager or reviewer needs to see
-whether a candidate has *actually* built the breadth of a production
-system — RAG, multi-agent orchestration, inference gateway, safety
-governance, evaluation, memory, fine-tuning, multimodal, voice — not just
-one polished demo. These 17 projects are that breadth probe.
-
-**Why it matters.** Each project is an independent, runnable FastAPI
-service with its own Docker setup, test suite and README. Together they
-exercise the full lifecycle of an agent system: retrieval (01/05/09/16),
-planning and tool-use (02/07/11), model routing and cost (03), safety and
-guardrails (04/15), evaluation and benchmarking (12/20), observability
-(17), memory (02/18), parameter-efficient fine-tuning (06), multimodal
-(09) and voice (19).
-
-**What I used.** FastAPI · LangGraph / LangChain · ChromaDB ·
-SentenceTransformers · OpenTelemetry-style tracing · spaCy · RestrictedPython
-sandbox · pytest. Real implementations, not mocks, for the core paths;
-mocks are only the LLM/vision/ASR/TTS **providers** (flagged in each
-README) so tests run without API keys or cost budget.
-
-**What the numbers show.** Across the 17 active projects the test suite
-measures **1215 passing tests + 16 skipped** (2026-11-01, reproduced from
-repo root with the command below). 3 environment-limited failures remain
-(03 needs a live key, 06 has a `transformers` 5.x API drift, 12 assumes a
-writable `/data`) — none is a logic bug in the shipped code.
-
-**What this collection does NOT prove.**
-- It is a **portfolio of scaffolds**, not a unified production codebase —
-  the projects were built to different engineering standards (see the
-  "Strong / Solid scaffolding / Archived" grading above).
-- Test counts measure **unit/integration coverage with mocked providers**,
-  *not* end-to-end latency, throughput, or cost against live APIs. They
-  say nothing about production performance.
-- **No security audit is claimed here.** The 2026-07-22 hard-fix pass
-  (SSRF / auth bypass / mock-hidden-as-real / fake metric) fixed the
-  findings it found; it is not a formal penetration test, and projects
-  marked "Solid scaffolding" should be reviewed with a critical eye before
-  production use.
-- **Archived projects (08/10/13) are explicitly deprecated** and excluded
-  from all counts; they must not be treated as live deliverables.
-
-## Running
-
-Each project is independent. See `XX-name/README.md` for setup. Most follow
-this pattern:
+Fresh clone, from the repository root. `make check-install` is the networked step. `make check` is offline and must finish in the same environment that produced the committed matrix (a clean venv from `requirements-check.txt`).
 
 ```bash
-cd XX-name
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
-# or
-docker-compose up --build
+python3 -m venv .venv
+. .venv/bin/activate
+make check-install
+make check
 ```
 
-## Test Coverage Summary (2026-11-01)
+`make check-refresh` overwrites `results/status-matrix.json`, `results/status-matrix.md`, and the table above. CI runs `make check` (compare only) in [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) job `offline-check`.
 
-| # | Project | Tests | Pass | Skip | Notes |
-|---|---|---:|---:|---:|---|
-| 01 | rag-knowledge-base | 30 | ✅ | | `pydantic-settings`, `loguru`, `python-magic` |
-| 02 | agent-workflow | 33 | ✅ | 4 | SSRF fix verified; `chromadb`, `sympy`, `aiofiles` |
-| 03 | multi-model-gateway | 29 | ✅ | 1 | 本机无真实 API key → `test_chat_completions_no_api_key` 外部调用超时返回 504（预期 500/502）；**网络/密钥依赖**，非逻辑 bug |
-| 04 | guardrails-chat | 67 | ✅ | | dev-bypass via `GUARDRAILS_AUTH_DISABLED=true` |
-| 05 | vector-db-manager | 16 | ✅ | | |
-| 06 | lora-finetune | 102 | ✅ | 7 | `SKIP_HEAVY_TESTS=1` (peft/torch heavy) · 本机 transformers 5.17 下 `warmup_ratio` 已移除 → 1 条 `test_to_transformers_args` 失败（版本漂移，非逻辑 bug） |
-| 07 | code-review-agent | 73 | ✅ | | `langgraph` |
-| 09 | multimodal-doc-understanding | 67 | ✅ | 1 | Mock w/ guard; real impl available |
-| 11 | dify-workflow | 89 | ✅ | | |
-| 12 | prompt-eval-framework | 60 | ✅ | 3 | `SKIP_HF_DOWNLOAD=1` for BERTScore (network-blocked) · 本机 `/data` 不可写 → 15 条 dataset 测试 ERROR（容器专用路径假设，非逻辑 bug） |
-| 14 | mcp-tool-integration | 92 | ✅ | | |
-| 15 | agent-security-sandbox | 106 | ✅ | | /execute requires Bearer |
-| 16 | kg-rag-fusion | 98 | ✅ | | NER now spaCy zh_core_web_sm |
-| 17 | llm-observability | 89 | ✅ | | |
-| 18 | agent-long-term-memory | 77 | ✅ | | Mock w/ guard; real LLMConsolidator available |
-| 19 | voice-ai-assistant | 82 | ✅ | | Mock w/ guard; real WhisperASR+EdgeTTS available |
-| 20 | llm-eval-benchmark | 105 | ✅ | | All benchmarks mocked, no LLM API required |
-| **Σ** | **17 active projects** | **1215** | **✅** | **16** | 另 3 条环境受限失败（03 网络 / 06 版本 / 12 路径），见各行 |
+The older `verify` job in that workflow still compares raw pytest exit codes to [`results/baseline.txt`](./results/baseline.txt). That file was recorded on a machine without per-project dependencies. It is a legacy ratchet, not this tier table.
 
-> **Methodology**: pytest on a single shared venv at `.ci-cache/venv/`
-> (Python 3.13.14). LLM calls disabled via `ALLOW_MOCK_PROVIDERS=true` etc.
-> Tests run **without** real API keys; coverage of LLM-path code is *not*
-> measured by these numbers (it would require live API + cost budget).
->
-> **2026-11-01 polish verification (this README's table is now the measured
-> result, not a target)**: tests were re-run with
-> `/tmp/polish-venv` (Python 3.12 + `loguru`/`RestrictedPython`/`nltk`/
-> `rouge_score`/`peft` installed via venv to avoid PEP 668). Table counts
-> are the **actual** per-project `pytest tests/ -q` pass counts. **5 real
-> bugs were found and fixed**: (a) `storage/` + (b) `data/` source modules
-> & test fixtures were silently excluded by `data/`+`storage/` `.gitignore`
-> rules, so a fresh clone could not import them and whole test files failed
-> to collect — fixed by narrowing those rules to runtime artifacts
-> (`*.db`/`*.jsonl`/`sample/`) and restoring the modules (see per-project
-> gitignore diffs); (c) `metrics/collector.py` `Histogram.to_dict` had a
-> **self-deadlock** (held a non-reentrant `threading.Lock` and called
-> `self.percentile()` which re-acquired it) — fixed by snapshotting values
-> under the lock and computing percentiles outside it. These fixes make the
-> code runnable where it previously was not; they change no research
-> conclusion. 3 environment-limited failures remain (see per-row notes):
-> 03 needs a live API key, 06 is a `transformers` 5.x API drift, 12 assumes
-> a writable `/data`.
->
-> **Reproduce the numbers** (one command per project, from repo root):
-> ```bash
-> export PYTHONPATH=.
-> for p in 01-rag-knowledge-base 02-agent-workflow 03-multi-model-gateway \
->          04-guardrails-chat 05-vector-db-manager 06-lora-finetune \
->          07-code-review-agent 09-multimodal-doc-understanding \
->          11-dify-workflow 12-prompt-eval-framework 14-mcp-tool-integration \
->          15-agent-security-sandbox 16-kg-rag-fusion 17-llm-observability \
->          18-agent-long-term-memory 19-voice-ai-assistant 20-llm-eval-benchmark; do
->   (cd "$p" && pytest tests/ -q --tb=line) || echo "FAILED: $p"
-> done
-> ```
-> (`SKIP_HEAVY_TESTS=1` for `06`, `SKIP_HF_DOWNLOAD=1` for `12`.)
->
-> **3 archived projects (`08`, `10`, `13`) excluded**: their tests, if any,
-> were deprecated along with the projects (see `archive/README.md`).
->
-> **Skip semantics**:
-> - `SKIP_HF_DOWNLOAD=1` skips tests that download from huggingface.co
->   (firewall may block HF Hub). Used by 12.
-> - `SKIP_HEAVY_TESTS=1` skips tests importing peft/torch (~1 GB).
->   Used by 06.
-> - `ALLOW_MOCK_PROVIDERS=true` etc. enables mock LLM/vision/ASR/TTS
->   (NOT actually invoking external API).
->
-> **Running all tests** (after `pip install -r requirements.txt` + the
-> extra deps in `notes` above):
-> ```bash
-> export PYTHONPATH=.
-> for p in 01-rag-knowledge-base 02-agent-workflow ...; do
->   (cd "$p" && pytest tests/ -q --tb=line) || break
-> done
-> ```
+`make eval` is a separate 20-case scorer fixture for `20-llm-eval-benchmark` (`eval/cases.jsonl`). It does not grade the other projects. Project 20's sample benchmarks, as named in its own code, are MMLU/GSM8K/HumanEval/MT-Bench · Wilson CI · McNemar.
 
-## Tech Stack (common)
+## FAILURE_MODES
 
-Python 3.11+ · FastAPI · LangChain / LangGraph · ChromaDB · SentenceTransformers · OpenAI / DeepSeek / Qwen / Anthropic · Docker · pytest
+### Mock masking real failures
+
+`make check` exports `ALLOW_MOCK_PROVIDERS=true` and does not set an API key. A `Default-mock` row passed while the default path still returns a canned string (vision, ASR/TTS, keyword memory consolidation, an LLM node, or `MockLLMClient` on an evaluate route). That run will not show a bad prompt, a downed API, or a wrong tool call. The `notes` cell points at the first matching source line. Passing tests under the mock flag is the measurement; it is not evidence that the opt-in provider path works.
+
+### Dependency rot across 17 projects
+
+Each active project ships its own `requirements.txt`, and the pins disagree (for example `18-agent-long-term-memory` pins `pytest==7.4.3` while `20-llm-eval-benchmark` pins `fastapi==0.115.0` and `numpy==2.1.0`). `make check` installs the single file `requirements-check.txt`. A green row means the suite ran on that shared set. It does not mean `pip install -r <project>/requirements.txt` still resolves, and it does not mean the excluded heavy stacks import.
+
+### Archived code still importable
+
+`08-smart-customer-service`, `10-inference-optimization`, and `13-paper-review-agent` are under `archive/` and are excluded from the tier table. Hyphenated directory names are not Python packages, so a root `PYTHONPATH` does not import them. Putting an archived directory on `sys.path` still reaches `app.main` when that tree's imports resolve. `archived_import` in `results/status-matrix.json` is the probe from the last `make check-refresh` (`ok app.main`, or the exception type). Archived code is kept on purpose and is unmaintained; it can still be executed.
+
+## Running one project
+
+```bash
+cd 20-llm-eval-benchmark
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload
+```
+
+Dependencies and commands differ per directory. Read that directory's README before treating a scaffold as something you would deploy. Where a README names a real provider, the switch is an environment variable and the default path is the one in the matrix `notes`.
+
+## Author and About
+
+Repository owner path: [github.com/aidless/llm-agent-projects](https://github.com/aidless/llm-agent-projects). The display name "Liu Zewen" is the string committed in earlier revisions of this file. This check does not verify a legal identity.
+
+GitHub About (observed, not edited here): `Portfolio of LLM/agent project scaffolds — RAG, multi-agent, safety, eval — tiered by quality, three archived after an honest audit`
+
+Replacement text, so About matches this README:
+
+`Independent LLM/agent scaffolds: 17 numbered projects, 3 archived. Tiers come from make check (offline pytest, mock providers, no API keys). Not a single production system.`
 
 ## License
 
-Each project is released under the MIT License — see the project-level
-`LICENSE` file. The collection as a whole is also MIT.
-
-## Author
-
-```mermaid
-flowchart LR
-    Q[用户请求] --> GW[03 multi-model-gateway<br/>4 路由策略 · 多 key 轮换 · 自动降级]
-    GW --> GR[04 guardrails-chat<br/>注入检测 · 7 类敏感过滤 · 幻觉检测]
-    GR --> RAG[01 rag-knowledge-base / 16 kg-rag-fusion<br/>BM25+向量 RRF · cross-encoder 重排 · KG 多跳]
-    RAG --> MEM[18 agent-long-term-memory<br/>语义/情景/程序/工作记忆 · 时间衰减]
-    MEM --> AG[02 agent-workflow · 07 code-review-agent · 11 dify-workflow<br/>Planner/Executor · AST 分析 · DAG 引擎]
-    AG --> SB[15 agent-security-sandbox<br/>RestrictedPython · 4 级策略 · Bearer 认证]
-    SB --> OBS[17 llm-observability<br/>trace/span/metric/log · 成本分析]
-    OBS --> EVAL[12 prompt-eval-framework · 20 llm-eval-benchmark<br/>BLEU/ROUGE · Wilson CI · McNemar]
-    INF[06 lora-finetune · 09 multimodal · 19 voice · 14 mcp<br/>训练 / 多模态 / 语音 / MCP] -.独立子项目.-> EVAL
-```
-
-（示意总览：各子项目相互独立、可单独运行；`demo_pipeline.py` 串联的是
-03 → 04 → 01+16 → 17 这条演示链路。）
-
-```text
-$ python demo_pipeline.py        # Mock 模式，无需 API key
-[Step 2] 04 输入安全护栏 — Prompt Injection / 敏感内容检测
-  总耗时: 0.2 ms
-  支撑度: 0.2
-  幻觉风险: high
-  Token: 108 in + 147 out
-  成本估算: $0.000000
-  检索结果: 2 个文档 (top score: 0.167)
-```
-
-（Mock 模式下「幻觉风险 high / 支撑度 20%」是演示链路对 mock 检索得分的
-真实计算结果，说明护栏模块在无 LLM 时按低支撑度如实降级，属预期行为。）
-
-**各子项目测试数字（2026-07-22 全量清点，见下表）+ 当前 CI 基线状态。**
-
-<details>
-<summary>Test Coverage Summary（2026-07-22，1182 tests，点击展开）</summary>
-
-| # | Project | Tests | Pass | Skip | Notes |
-|---|---|---:|---:|---:|---|
-| 01 | rag-knowledge-base | 30 | ✅ | | `pydantic-settings`, `loguru`, `python-magic` |
-| 02 | agent-workflow | 33 | ✅ | 4 | SSRF fix verified; `chromadb`, `sympy`, `aiofiles` |
-| 03 | multi-model-gateway | 30 | ✅ | | dev-bypass via `GATEWAY_AUTH_DISABLED=true` |
-| 04 | guardrails-chat | 67 | ✅ | | dev-bypass via `GUARDRAILS_AUTH_DISABLED=true` |
-| 05 | vector-db-manager | 16 | ✅ | | |
-| 06 | lora-finetune | 54 | ✅ | 3 | `SKIP_HEAVY_TESTS=1` (peft/torch imports heavy) |
-| 07 | code-review-agent | 73 | ✅ | | `langgraph` |
-| 09 | multimodal-doc-understanding | 67 | ✅ | 1 | Mock w/ guard; real impl available |
-| 11 | dify-workflow | 89 | ✅ | | |
-| 12 | prompt-eval-framework | 75 | ✅ | 3 | `SKIP_HF_DOWNLOAD=1` for BERTScore (network-blocked) |
-| 14 | mcp-tool-integration | 92 | ✅ | | |
-| 15 | agent-security-sandbox | 106 | ✅ | | /execute requires Bearer |
-| 16 | kg-rag-fusion | 98 | ✅ | | NER now spaCy zh_core_web_sm |
-| 17 | llm-observability | 89 | ✅ | | |
-| 18 | agent-long-term-memory | 77 | ✅ | | Mock w/ guard; real LLMConsolidator available |
-| 19 | voice-ai-assistant | 82 | ✅ | | Mock w/ guard; real WhisperASR+EdgeTTS available |
-| 20 | llm-eval-benchmark | 105 | ✅ | | All benchmarks mocked, no LLM API required |
-| **Σ** | **17 active projects** | **1182** | **✅** | **11** | |
-
-</details>
-
-**当前 CI 基线（`results/baseline.txt`，悲观记录，勿混淆）**：上表 1182 全绿
-是在**共享 venv（Python 3.13.14）+ 全依赖安装**环境下的清点结果；
-后来的**裸 Python 3.12 无逐项目依赖**的本机重跑中，17 个子项目里 15 个因
-缺包产生 collection error 被悲观记为 `failing`，仅 `09`/`18` 为 `green`
-（`09-multimodal-doc-understanding`、`18-agent-long-term-memory`）。
-CI 门按此基线只惩罚「新失败/由绿转红」，不把环境差异当回归。
-**当前演示链路实跑数字（2026-11-10，Mock 模式）**：`demo_pipeline.py`
-端到端 0.2 ms，检索 2 文档（top score 0.167），Token 108 in + 147 out，
-mock 成本 $0.000000。
-
-> **Methodology**: pytest on a single shared venv at `.ci-cache/venv/`
-> (Python 3.13.14). LLM calls disabled via `ALLOW_MOCK_PROVIDERS=true` etc.
-> Tests run **without** real API keys; coverage of LLM-path code is *not*
-> measured by these numbers (it would require live API + cost budget).
->
-> **3 archived projects (`08`, `10`, `13`) excluded**: their tests, if any,
-> were deprecated along with the projects (see `archive/README.md`).
->
-> **Skip semantics**:
-> - `SKIP_HF_DOWNLOAD=1` skips tests that download from huggingface.co
->   (firewall may block HF Hub). Used by 12.
-> - `SKIP_HEAVY_TESTS=1` skips tests importing peft/torch (~1 GB).
->   Used by 06.
-> - `ALLOW_MOCK_PROVIDERS=true` etc. enables mock LLM/vision/ASR/TTS
->   (NOT actually invoking external API).
->
-> **Running all tests** (after `pip install -r requirements.txt` + the
-> extra deps in `notes` above):
-> ```bash
-> export PYTHONPATH=.
-> for p in 01-rag-knowledge-base 02-agent-workflow ...; do
->   (cd "$p" && pytest tests/ -q --tb=line) || break
-> done
-> ```
-
-- **作品集集合，不是统一生产代码库**：17 个子项目按独立脚手架标准生成，质量分层见顶部「Important context」块，未对齐同一工程标准。
-- 1182 测试数字**不含 LLM 真实路径覆盖**：全部 mock 运行，无真实 API 消耗；上表与裸环境重跑的 `failing` 基线是两种环境的记录，不要混用。
-- Mock 默认组件：`09` 视觉、`18` 记忆固化、`19` ASR/TTS 默认 Mock（env var 显式切换真实现）；`11` LLMNode 默认 Mock。
-- 三个归档项目（`08`/`10`/`13`）已废弃，其中 `13` 的「GPT-4o + DeepSeek 交叉验证」叙事是虚构的，勿引用。
-[@aidless](https://github.com/aidless) — Liu Zewen
----
-
-## 验收标准与复算
-
-**判据**：本仓判为合格的条件是 `python3 eval/run_cases.py` 通过率必须为 100%（20/20），且 `make eval` 退出码必须为 0；任何一条失败即判为不合格。
-
-### 题库（`eval/cases.jsonl`，20 条）
-
-| axis | 条数 | 考什么 |
-|---|---|---|
-| scorer/accuracy | 3 | 5/7 正确时 `Scorer.accuracy` 的 value、Wilson 95% 下界、`details` 里的 correct/total |
-| scorer/f1 | 1 | 3/4 正确时的 F1（precision=recall=0.75） |
-| scorer/passk | 2 | `1-(1-p)^k`：p=5/7、k=3、n=5 → 0.976676；p=0.6、k=2、n=3 → 0.84 |
-| scorer/mcnemar | 2 | 9:0 配对下的统计量 7.1111 与 p=0.03 / significant=True |
-| scorer/mean | 1 | 三条评分 8/6/10 归一化到 10 分制 = 8.0 |
-| gsm8k/data | 3 | 样本题数 30、难度分布 easy:10,hard:4,medium:16、坏数据路径抛 FileNotFoundError |
-| gsm8k/extract | 1 | 从第 1 题自带 solution 的 `#### 50` 解析出 50 |
-| mmlu/check | 1 | answer 索引 0 且模型答 "The answer is A" 时判对 |
-| humaneval/check | 1 | 返回含 `def has_close_elements(` 的代码时判对 |
-| mtbench/data | 1 | 对话条数 10 |
-| registry/unknown | 1 | 请求未知基准名 `nope` 抛 ValueError |
-| readme/claims | 2 | README 的两处自述：20 号项目能力行、17 个编号项目 |
-| system-map/layers | 1 | SYSTEM_MAP.md 的「17 个活跃项目互连」声明 |
-
-其中 17 条是 `expr`/`raises`（真调 `20-llm-eval-benchmark` 的 `engine.scorer`、`benchmarks` 与 `data/*.json`），3 条是 `doc`（只校验文档里既有的字符串声明，不产生新数字）。
-
-### 一键重跑
-
-```bash
-python3 eval/run_cases.py              # 20/20，退出码 0
-python3 eval/run_cases.py --save       # 重建 eval/run-report.json
-python3 eval/run_cases.py --selftest   # 篡改 EV-01 的期望值，必须 19/20（证明这套题会红）
-make eval                              # 根级 Makefile 的同一个入口
-```
-
-三个 python 命令都在**仓库根**执行：case 里把 `20-llm-eval-benchmark` 加入 `sys.path` 的路径由 `eval/run_cases.py` 自身位置推导，不依赖当前目录。
-
-### 数字如何复算
-
-每题 `verify` 字段就是复算代码，跑它一遍就得到 `expected`：
-
-- `expr`：执行 `verify`，读变量 `result` 与 `expected` 比较（int/float 走数值比较，其余按字符串）；
-- `raises`：`verify` 必须抛异常，且异常类型名等于 `expected`；
-- `doc`：`路径::正则`，在该文档里搜这个正则。
-
-期望值全部**现算**，不是抄 README：例如 EV-01 的 0.714286 就是 `Scorer.accuracy` 在 7 条结果（5 对 2 错）上的输出，改一行 `scorer.py` 的实现就会变红。`--save` 把逐条 `id/axis/ok/detail` 写进 `eval/run-report.json`，重跑 `--save` 即重建；`detail` 列在失败时同时给出实测值，可直接对数。
-
-### 失败归因
-
-`eval/run_cases.py` 失败时不只报 pass_rate，而是按 axis 汇总，输出形如 `<axis>: 1 条 —— <ID>`（例：`scorer/accuracy: 1 条 —— EV-01`），并按 axis 指向模块：
-
-| 失败 axis | 对应模块 |
-|---|---|
-| `scorer/*` | `20-llm-eval-benchmark/engine/scorer.py`（accuracy / Wilson / F1 / Pass@k / McNemar / 均值区间） |
-| `gsm8k/*` | `20-llm-eval-benchmark/benchmarks/gsm8k.py` + `data/gsm8k_sample.json`（加载、难度分布、答案提取） |
-| `mmlu/check`、`humaneval/check`、`mtbench/data` | 对应的 `benchmarks/*.py` 与其 `data/*_sample.json` |
-| `registry/unknown` | `20-llm-eval-benchmark/benchmarks/__init__.py` 的注册表分支 |
-| `readme/claims`、`system-map/layers` | 根级 `README.md` / `SYSTEM_MAP.md` 的声明漂移（文档与实现不一致） |
-
-退出码约定：0 = 全过；1 = 有 case 失败；2 = 题库本身坏了（读不了 / 缺字段 / 重复 id）。`make eval` 原样透传该退出码。既有的子项目 pytest 套件不在 `make eval` 里（其当前状态见 `results/baseline.txt`，多数子项目本来就是 failing），单独用 `make test-20` 跑。
+Each project directory carries its own MIT `LICENSE`. The collection is MIT as well. See [`LICENSE`](./LICENSE).

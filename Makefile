@@ -1,8 +1,27 @@
-# 根级一键入口。只新增本文件，不改既有 CI（.github/workflows/*）。
+# Root entry points.
+# `make check` is the collection evidence: offline pytest for every active
+# project, then a drift test that the README tier table matches the matrix.
+# `make check-install` is the one networked step (pip + NLTK tokenizers).
 PYTHON ?= python3
 SUB    ?= 20-llm-eval-benchmark
 
-.PHONY: eval eval-save eval-selftest test-20
+.PHONY: eval eval-save eval-selftest test-20 check check-refresh check-install
+
+# Install the shared offline environment. Needs network. Not part of `make check`.
+check-install:
+	$(PYTHON) -m pip install -r requirements-check.txt
+	$(PYTHON) scripts/bootstrap_nltk.py
+
+# Re-run offline tests. Exit 1 when counts, tiers, or the README table drift
+# from results/status-matrix.json. Does not rewrite that file.
+check:
+	$(PYTHON) scripts/offline_check.py --compare
+	$(PYTHON) scripts/drift_check.py
+
+# Re-run offline tests and overwrite the committed matrix + README table.
+check-refresh:
+	$(PYTHON) scripts/offline_check.py --refresh
+	$(PYTHON) scripts/drift_check.py
 
 # 验收入口：跑 eval/cases.jsonl 的 20 条题目，20/20 才算通过（退出码原样透传）。
 eval:
@@ -16,6 +35,6 @@ eval-save:
 eval-selftest:
 	$(PYTHON) eval/run_cases.py --selftest
 
-# 既有 pytest 套件是另一回事：当前状态见 results/baseline.txt，不在 eval 里。
+# Project 20's own pytest. The collection gate is `make check`, not this target.
 test-20:
 	cd $(SUB) && $(PYTHON) -m pytest tests/ -q --tb=line

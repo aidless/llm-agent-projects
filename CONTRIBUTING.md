@@ -7,17 +7,20 @@ Thanks for your interest in improving this repository.
 ```bash
 git clone https://github.com/aidless/llm-agent-projects.git
 cd llm-agent-projects
-pip install -r requirements.txt   # if present
+python3 -m venv .venv
+. .venv/bin/activate
+make check-install
 ```
+
+`make check-install` is the networked step (`requirements-check.txt` plus NLTK tokenizers). There is no single root `requirements.txt`; each numbered directory has its own, and the collection check uses the shared file above.
 
 ## Verifying your change
 
 ```bash
-python3 -m pytest -q
+make check
 ```
 
-If the repository has a `Makefile`, `make check` or the closest equivalent runs the same
-checks as CI. Please run it before opening a pull request.
+That is the command CI runs (`.github/workflows/ci.yml`, job `offline-check`). It re-runs every active project's offline tests and fails if `results/status-matrix.json` or the README tier table would change. After a real change to those counts, run `make check-refresh` and commit the matrix.
 
 ## Pull requests
 

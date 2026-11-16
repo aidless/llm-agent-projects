@@ -2,6 +2,9 @@
 
 import json
 import os
+import shutil
+import tempfile
+
 import pytest
 
 from datasets.manager import DatasetManager
@@ -11,13 +14,12 @@ from datasets.augmenter import DataAugmenter
 class TestDatasetManager:
     def setup_method(self):
         self.manager = DatasetManager()
-        self.test_dir = "/data/user/work/test_data"
-        os.makedirs(self.test_dir, exist_ok=True)
+        # A previous draft hardcoded /data/user/work/test_data, which is not
+        # writable on a fresh clone. The files under test are temporary inputs.
+        self.test_dir = tempfile.mkdtemp(prefix="prompt-eval-dataset-")
 
     def teardown_method(self):
-        import shutil
-        if os.path.exists(self.test_dir):
-            shutil.rmtree(self.test_dir)
+        shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_create_dataset(self):
         result = self.manager.create_dataset(

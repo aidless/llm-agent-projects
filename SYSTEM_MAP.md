@@ -1,6 +1,6 @@
 # LLM Agent Projects — System Map
 
-> How the 17 active projects interconnect — for portfolio demonstration and interview narrative.
+> How the 17 active projects interconnect — a narrative map, not a runtime that `make check` executes.
 
 ## Architecture Layers
 
@@ -99,19 +99,14 @@ User Query
 12, 20 (eval)     ──► benchmarks ──► 01, 02, 03, 06, 07
 ```
 
-## Project Quality Tiers
+## Project quality tiers
 
-| Tier | Projects | Description |
-|---|---|---|
-| **Strong** (5) | 01, 06, 15, 17, 20 | Real end-to-end implementations, production-ready patterns |
-| **Solid** (7) | 02, 03, 04, 05, 07, 11, 14 | Useful code, needs critical reading of Mock components |
-| **Real-Enabled** (3) | 09, 18, 19 | Mock by default; real implementations now available via env config |
+Tiers are the offline matrix in [`results/status-matrix.json`](./results/status-matrix.json), copied into the root README. This file does not keep a second tier list. A diagram above is a narrative of how the scaffolds could be talked about together. `make check` does not boot that diagram.
 
-## Interview Talking Points
+## Interview talking points
 
-1. **Breadth**: 17 projects covering the full LLM stack — from training to deployment to safety
-2. **Depth**: Strong projects (01, 06, 15, 17, 20) show real engineering, not just scaffolding
-3. **Honesty**: 3 archived projects with clear deprecation reasons; Mock components are clearly labeled
-4. **Security**: 2026-07-22 audit fixed SSRF, auth bypass, and hidden mocks
-5. **Testing**: 1,182 tests across all projects, all passing
-6. **Pipeline thinking**: Projects designed to compose, not just exist in isolation
+1. **Breadth**: 17 active directories plus 3 archived ones, covering RAG, agents, gateways, safety, eval, memory, fine-tuning, multimodal, and voice.
+2. **What was measured**: `make check` runs each active project's `tests/` with mock providers and no API key. The tier names the outcome of that run.
+3. **Honesty**: archived projects state why they were moved; default-path mocks are a column in the matrix.
+4. **Security notes in project READMEs** (SSRF, auth, mock guards) are code comments and tests from 2026-07-22. They are not a fresh penetration test.
+5. **Composition**: `demo_pipeline.py` is a script in this repo. The matrix does not score it.
